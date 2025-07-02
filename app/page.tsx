@@ -26,6 +26,8 @@ export default function Home() {
     
     // 로그인 성공 시 처리
     alert("로그인 성공!");
+    // 실제로는 보돌 현황 페이지로 리다이렉션
+    window.location.href = "/boss-status";
   };
 
   return (
