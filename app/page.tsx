@@ -1,33 +1,46 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "../store/authStore";
 
 export default function Home() {
+  const router = useRouter();
+  const { login, isLoading, error, clearError, isLoggedIn, initializeAuth } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // 페이지 로드 시 인증 상태 초기화
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  // 이미 로그인된 상태라면 보돌 현황 페이지로 리다이렉션
+  useEffect(() => {
+    if (isLoggedIn) {
+      router.push("/boss-status");
+    }
+  }, [isLoggedIn, router]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    clearError();
     
-    // 간단한 유효성 검사 (실제로는 서버 API 호출)
+    // 유효성 검사
     if (!username.trim() || !password.trim()) {
-      setError("입력한 아이디 혹은 비밀번호가 유효하지 않습니다. \n 확인 후 다시 입력해주세요.");
       return;
     }
     
-    // 임시 검증 로직 (실제로는 API로 검증)
-    if (username !== "테스트" || password !== "1234") {
-      setError("입력한 아이디 혹은 비밀번호가 유효하지 않습니다. \n 확인 후 다시 입력해주세요.");
-      return;
-    }
+    // 로그인 시도
+    const success = await login({
+      mainCharacterName: username.trim(),
+      password: password
+    });
     
-    // 로그인 성공 시 처리
-    alert("로그인 성공!");
-    // 실제로는 보돌 현황 페이지로 리다이렉션
-    window.location.href = "/boss-status";
+    if (success) {
+      router.push("/boss-status");
+    }
   };
 
   return (
@@ -95,9 +108,14 @@ export default function Home() {
           {/* 로그인 버튼 */}
           <button
             type="submit"
-            className="w-full bg-[#FF9100] hover:bg-[#E8820E] text-white font-medium py-3 px-4 rounded-lg transition-colors focus:ring-2 focus:ring-[#FF9100] focus:ring-offset-2"
+            disabled={isLoading || !username.trim() || !password.trim()}
+            className={`w-full font-medium py-3 px-4 rounded-lg transition-colors focus:ring-2 focus:ring-[#FF9100] focus:ring-offset-2 ${
+              isLoading || !username.trim() || !password.trim()
+                ? "bg-gray-400 text-white cursor-not-allowed"
+                : "bg-[#FF9100] hover:bg-[#E8820E] text-white"
+            }`}
           >
-            로그인
+            {isLoading ? "로그인 중..." : "로그인"}
           </button>
         </form>
 

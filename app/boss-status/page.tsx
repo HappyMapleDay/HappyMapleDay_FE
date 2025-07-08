@@ -2,15 +2,31 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Character } from "../../types";
 import { BossSelection } from "../../types/boss";
 import BossSelectionModal from "../../components/BossSelectionModal";
 import AddBossCharacterModal from "../../components/AddBossCharacterModal";
 import { mockBosses } from "../../data/mockBosses";
 import { getCurrentBossCharacters, mockAllCharacters } from "../../data/mockCharacters";
+import { useAuth } from "../../store/authStore";
 
 export default function BossStatusPage() {
+  const router = useRouter();
+  const { isLoggedIn, logout, mainCharacterName, initializeAuth } = useAuth();
+  
+  // 인증 상태 확인 및 리다이렉션
+  useEffect(() => {
+    initializeAuth();
+  }, [initializeAuth]);
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      router.push('/');
+    }
+  }, [isLoggedIn, router]);
+
   // 현재 보돌캐로 선택된 캐릭터들
   const [bossCharacters, setBossCharacters] = useState<Character[]>(getCurrentBossCharacters());
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>("1");
@@ -222,8 +238,18 @@ export default function BossStatusPage() {
 
             {/* User Menu */}
             <div className="flex items-center gap-4">
-              <span className="text-gray-600">설정</span>
-              <span className="text-gray-600">로그아웃</span>
+              <span className="text-sm text-gray-600">
+                {mainCharacterName || '사용자'}님
+              </span>
+              <button className="text-gray-600 hover:text-orange-500 transition-colors">
+                설정
+              </button>
+              <button 
+                onClick={logout}
+                className="text-gray-600 hover:text-orange-500 transition-colors"
+              >
+                로그아웃
+              </button>
             </div>
           </div>
         </div>

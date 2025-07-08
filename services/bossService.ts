@@ -2,7 +2,7 @@ import { Boss } from '../types';
 import { mockBosses, getRecommendedBosses } from '../data/mockBosses';
 
 // API 설정
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK === 'true' || true; // 백엔드 준비 전까지 true
 
 // 백엔드 API 응답 타입 (실제 API 구조에 맞게 수정 예정)

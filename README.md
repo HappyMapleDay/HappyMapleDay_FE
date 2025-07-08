@@ -1,5 +1,44 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+# 메요일조아 (HappyMapleDay)
+
+메이플스토리 보스 돌이 관리 시스템
+
+## 주요 기능
+
+- 사용자 인증 (회원가입, 로그인, 비밀번호 재설정)
+- 보스 돌이 현황 관리
+- 캐릭터별 보스 선택 및 설정
+- 주간/일간 보스 진행 상황 추적
+
+## API 연동 완료 사항
+
+### 인증 관련 API
+- ✅ 회원가입 (`POST /api/user/register`)
+- ✅ 로그인 (`POST /api/user/login`)
+- ✅ 로그아웃 (`POST /api/user/logout`)
+- ✅ 토큰 갱신 (`POST /api/user/refresh`)
+- ✅ 비밀번호 재설정 (`POST /api/user/reset-password`)
+- ✅ 사용자명 중복 확인 (`GET /api/user/check-username/{name}`)
+
+### 사용자 설정 API
+- ✅ 사용자 설정 조회 (`GET /api/user/settings`)
+- ✅ 개인정보 수집 동의 설정 (`PUT /api/user/settings/privacy`)
+- ✅ 주간 초기화 설정 (`PUT /api/user/settings/weekly-reset`)
+- ✅ 본캐 변경 (`PUT /api/user/main-character`)
+
+## 환경 변수 설정
+
+프로젝트 루트에 `.env.local` 파일을 생성하고 다음 변수들을 설정하세요:
+
+```env
+# 백엔드 API 기본 URL
+NEXT_PUBLIC_API_URL=http://localhost:8080
+
+# Mock 데이터 사용 여부 (개발 중에는 false)
+NEXT_PUBLIC_USE_MOCK=false
+```
+
 ## Getting Started
 
 First, run the development server:

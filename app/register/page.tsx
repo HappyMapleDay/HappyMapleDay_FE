@@ -4,22 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-interface Character {
-  id: string;
-  name: string;
-  server: string;
-  job: string;
-  level: number;
-  image: string;
-}
+import { useAuth } from "../../store/authStore";
+import { Character } from "../../types";
 
 export default function Register() {
   const router = useRouter();
+  const { signup, isLoading, error, clearError } = useAuth();
   const [step, setStep] = useState<'api' | 'character'>('api');
   const [apiKey, setApiKey] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [selectedBossCharacters, setSelectedBossCharacters] = useState<Character[]>([]);
@@ -30,19 +22,18 @@ export default function Register() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    setError("");
+    clearError();
     
     // API 키로 캐릭터 목록 불러오기 로직 (임시)
+    // 실제로는 Nexon API 호출하여 캐릭터 목록을 가져와야 함
     setTimeout(() => {
-      setIsLoading(false);
-      
       // 간단한 API 키 검증 (실제로는 Nexon API 호출)
       // 테스트 케이스 추가
       if (apiKey === "1234") {
         // 테스트 케이스는 통과
       } else if (apiKey.length < 50) {
-        setError("입력한 API key가 유효하지 않습니다. \n 확인 후 다시 입력해주세요.");
+        // 실제로는 별도의 에러 상태 관리가 필요할 수 있음
+        alert("입력한 API key가 유효하지 않습니다. \n 확인 후 다시 입력해주세요.");
         return;
       }
       
@@ -130,14 +121,27 @@ export default function Register() {
     return true;
   };
 
-  const handleRegisterComplete = () => {
+  const handleRegisterComplete = async () => {
     if (!selectedCharacter || !password || !confirmPassword || !agreeToTerms) {
       return;
     }
     
-    if (validatePassword(password, confirmPassword)) {
-      alert("회원가입이 완료되었습니다!");
-      // 회원가입 완료 후 로그인 페이지로 리다이렉션
+    if (!validatePassword(password, confirmPassword)) {
+      return;
+    }
+
+    // 회원가입 API 호출 - 백엔드 API 스펙에 맞게 수정
+    const success = await signup({
+      nexonApiKey: apiKey,
+      mainCharacterName: selectedCharacter.name,
+      subCharacterNames: selectedBossCharacters.map(char => char.name),
+      password: password,
+      passwordConfirm: confirmPassword,
+      dataCollectionAgreed: agreeToTerms
+    });
+
+    if (success) {
+      alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
       router.push('/');
     }
   };

@@ -68,4 +68,7 @@ export interface AppActions {
   fetchCharacters: (apiKey: string) => Promise<Character[]>;
 }
 
+// Auth 관련 타입들 re-export
+export * from './auth';
+
 export type AppStore = AppState & AppActions; 
