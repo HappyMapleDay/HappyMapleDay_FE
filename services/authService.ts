@@ -57,7 +57,6 @@ class HttpClient {
       ...options,
       headers: {
         ...options.headers,
-        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
       },
     };
 
@@ -137,7 +136,10 @@ class HttpClient {
     return this.makeRequest<T>(url, {
       method: 'POST',
       body: data ? JSON.stringify(data) : undefined,
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
     });
   }
 
@@ -145,7 +147,10 @@ class HttpClient {
     return this.makeRequest<T>(url, {
       method: 'PUT',
       body: data ? JSON.stringify(data) : undefined,
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
     });
   }
 }
@@ -169,7 +174,7 @@ class AuthService {
     try {
       const response = await this.httpClient.post<LoginResponseDto>('/api/user/login', request);
       
-      if (response.success && response.data) {
+      if (response.status === "success" && response.data) {
         // 토큰 저장
         TokenManager.setTokens(response.data.token, response.data.refreshToken);
       }

@@ -29,7 +29,7 @@ interface AuthState {
 // Zustand Store 생성
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       // 초기 상태
       user: null,
       isLoading: false,
@@ -148,20 +148,25 @@ export const useAuthStore = create<AuthState>()(
       // 인증 상태 초기화 (페이지 로드 시 호출)
       initializeAuth: () => {
         const tokens = authService.getTokens();
+        const currentState = get();
         
         if (tokens.accessToken && tokens.refreshToken) {
-          // 토큰이 있으면 사용자 정보를 임시로 설정
-          // 실제로는 토큰을 검증하거나 사용자 정보를 가져와야 함
-          const user: AuthUser = {
-            id: 0, // 임시 ID
-            mainCharacterName: '', // 실제로는 토큰에서 파싱하거나 API 호출
-            accessToken: tokens.accessToken,
-            refreshToken: tokens.refreshToken,
-          };
-          
-          set({ user, isInitialized: true });
+          // 이미 저장된 사용자 정보가 있으면 토큰만 업데이트
+          if (currentState.user) {
+            set({ 
+              user: {
+                ...currentState.user,
+                accessToken: tokens.accessToken,
+                refreshToken: tokens.refreshToken,
+              },
+              isInitialized: true 
+            });
+          } else {
+            // 사용자 정보가 없으면 로그아웃 처리
+            set({ user: null, isInitialized: true });
+          }
         } else {
-          set({ isInitialized: true });
+          set({ user: null, isInitialized: true });
         }
       },
     }),

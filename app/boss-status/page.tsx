@@ -241,9 +241,9 @@ export default function BossStatusPage() {
               <span className="text-sm text-gray-600">
                 {mainCharacterName || '사용자'}님
               </span>
-              <button className="text-gray-600 hover:text-orange-500 transition-colors">
+              <Link href="/settings" className="text-gray-600 hover:text-orange-500 transition-colors">
                 설정
-              </button>
+              </Link>
               <button 
                 onClick={logout}
                 className="text-gray-600 hover:text-orange-500 transition-colors"

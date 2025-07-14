@@ -70,7 +70,7 @@ export interface LogoutResponseDto {
 // 비밀번호 재설정 관련 타입
 export interface PasswordResetRequestDto {
   mainCharacterName: string;
-  nexonApiKey: string;
+  nexonApikey: string;
 }
 
 export interface PasswordResetResponseDto {

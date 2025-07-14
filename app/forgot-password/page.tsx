@@ -26,7 +26,7 @@ export default function ForgotPassword() {
     // 비밀번호 재설정 API 호출
     const result = await resetPassword({
       mainCharacterName: username.trim(),
-      nexonApiKey: apiKey.trim()
+      nexonApikey: apiKey.trim()
     });
     
     if (result.success && result.temporaryPassword) {

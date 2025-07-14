@@ -131,14 +131,16 @@ export default function Register() {
     }
 
     // 회원가입 API 호출 - 백엔드 API 스펙에 맞게 수정
-    const success = await signup({
+    const signupData = {
       nexonApiKey: apiKey,
       mainCharacterName: selectedCharacter.name,
       subCharacterNames: selectedBossCharacters.map(char => char.name),
       password: password,
       passwordConfirm: confirmPassword,
       dataCollectionAgreed: agreeToTerms
-    });
+    };
+    
+    const success = await signup(signupData);
 
     if (success) {
       alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
