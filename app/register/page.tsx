@@ -11,7 +11,7 @@ export default function Register() {
   const router = useRouter();
   const { signup, isLoading, error, clearError } = useAuth();
   const [step, setStep] = useState<'api' | 'character'>('api');
-  const [apiKey, setApiKey] = useState("");
+  const [apiKey] = useState("test_api_key_9x7k2m4n8p1q5w");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [selectedBossCharacters, setSelectedBossCharacters] = useState<Character[]>([]);
@@ -29,7 +29,7 @@ export default function Register() {
     setTimeout(() => {
       // 간단한 API 키 검증 (실제로는 Nexon API 호출)
       // 테스트 케이스 추가
-      if (apiKey === "1234") {
+      if (apiKey === "test_api_key_9x7k2m4n8p1q5w") {
         // 테스트 케이스는 통과
       } else if (apiKey.length < 50) {
         // 실제로는 별도의 에러 상태 관리가 필요할 수 있음
@@ -184,24 +184,15 @@ export default function Register() {
                   id="apiKey"
                   name="apiKey"
                   value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="API 키를 발급받아 입력해주세요."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+                  readOnly
+                  placeholder="테스트용 API 키가 자동으로 설정됩니다."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
                 />
               </div>
 
-              {/* API 키 발급 가이드 링크 */}
+              {/* 테스트용 API 키 안내 */}
               <div className="text-sm text-gray-500 text-center">
-                API 키 발급 방법은{" "}
-                <a 
-                  href="https://openapi.nexon.com/ko/guide/" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-blue-500 hover:text-blue-700 underline"
-                >
-                  API 키 발급 가이드
-                </a>
-                를 참고해주세요
+                현재 테스트용 API 키가 자동으로 설정되었습니다.
               </div>
 
               {/* 에러 메시지 */}

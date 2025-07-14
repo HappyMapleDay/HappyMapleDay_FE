@@ -53,21 +53,33 @@ class HttpClient {
     url: string,
     options: RequestInit = {}
   ): Promise<T> {
+    console.log('makeRequest 받은 options:', options);
+    console.log('makeRequest 받은 options.headers:', options.headers);
+    
     const config: RequestInit = {
       ...options,
       headers: {
-        ...options.headers,
+        ...(options.headers || {}),
       },
     };
 
+    console.log('makeRequest config.headers 초기값:', config.headers);
+
     // 인증이 필요한 요청에 토큰 추가
     const accessToken = TokenManager.getAccessToken();
-    if (accessToken && !url.includes('/login') && !url.includes('/register')) {
+    if (accessToken && !url.includes('/login') && !url.includes('/register') && !url.includes('/reset-password')) {
       config.headers = {
         ...config.headers,
         'Authorization': `Bearer ${accessToken}`,
       };
     }
+
+    console.log('API 요청:', {
+      url: `${API_BASE_URL}${url}`,
+      method: config.method,
+      headers: config.headers,
+      body: config.body
+    });
 
     const response = await fetch(`${API_BASE_URL}${url}`, config);
     
@@ -94,7 +106,15 @@ class HttpClient {
 
     const data = await response.json();
     
+    console.log('서버 응답 상태:', response.status);
+    console.log('서버 응답 데이터:', data);
+    
     if (!response.ok) {
+      console.error('API 요청 실패:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: data
+      });
       throw new Error(data.message || '요청이 실패했습니다.');
     }
     
@@ -245,7 +265,10 @@ class AuthService {
   // 비밀번호 재설정
   async resetPassword(request: PasswordResetRequestDto): Promise<PasswordResetResponseDto> {
     try {
-      return await this.httpClient.post<PasswordResetResponseDto>('/api/user/reset-password', request);
+      console.log('비밀번호 재설정 요청 데이터:', request);
+      const response = await this.httpClient.post<PasswordResetResponseDto>('/api/user/reset-password', request);
+      console.log('비밀번호 재설정 응답:', response);
+      return response;
     } catch (error) {
       console.error('비밀번호 재설정 실패:', error);
       throw error;

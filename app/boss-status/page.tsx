@@ -202,20 +202,21 @@ export default function BossStatusPage() {
       <header className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/image/logo.png"
-                alt="메요일조아 로고"
-                width={32}
-                height={32}
-                className="rounded-lg"
-              />
-              <span className="text-xl font-bold text-orange-500">메요일조아</span>
-            </Link>
+            {/* Logo and Navigation */}
+            <div className="flex items-center gap-8">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/image/logo.png"
+                  alt="메요일조아 로고"
+                  width={32}
+                  height={32}
+                  className="rounded-lg"
+                />
+                <span className="text-xl font-bold text-orange-500">메요일조아</span>
+              </Link>
 
-            {/* Navigation */}
-            <nav className="flex items-center gap-8">
+              {/* Navigation */}
+              <nav className="flex items-center gap-8">
               <Link 
                 href="/boss-status" 
                 className="text-orange-500 font-medium border-b-2 border-orange-500 pb-1"
@@ -235,6 +236,7 @@ export default function BossStatusPage() {
                 물욕템 히스토리
               </Link>
             </nav>
+            </div>
 
             {/* User Menu */}
             <div className="flex items-center gap-4">
