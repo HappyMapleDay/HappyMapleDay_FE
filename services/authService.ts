@@ -9,6 +9,8 @@ import {
   LogoutResponseDto,
   PasswordResetRequestDto,
   PasswordResetResponseDto,
+  PasswordChangeRequestDto,
+  PasswordChangeResponseDto,
   UserSettingsResponseDto,
   PrivacySettingsUpdateRequestDto,
   WeeklyResetSettingsUpdateRequestDto,
@@ -315,6 +317,16 @@ class AuthService {
     }
   }
 
+  // 비밀번호 변경
+  async changePassword(request: PasswordChangeRequestDto): Promise<PasswordChangeResponseDto> {
+    try {
+      return await this.httpClient.put<PasswordChangeResponseDto>('/api/user/change-password', request);
+    } catch (error) {
+      console.error('비밀번호 변경 실패:', error);
+      throw error;
+    }
+  }
+
   // 현재 로그인 상태 확인
   isLoggedIn(): boolean {
     return TokenManager.getAccessToken() !== null;
@@ -341,4 +353,5 @@ export const logout = () => authService.logout();
 export const signup = (request: SignupRequestDto) => authService.signup(request);
 export const checkUsername = (name: string) => authService.checkUsername(name);
 export const resetPassword = (request: PasswordResetRequestDto) => authService.resetPassword(request);
+export const changePassword = (request: PasswordChangeRequestDto) => authService.changePassword(request);
 export const isLoggedIn = () => authService.isLoggedIn(); 

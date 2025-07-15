@@ -116,6 +116,20 @@ export interface MainCharacterUpdateResponseDto {
   };
 }
 
+// 비밀번호 변경 관련 타입
+export interface PasswordChangeRequestDto {
+  mainCharacterName: string;
+  newPassword: string;
+}
+
+export interface PasswordChangeResponseDto {
+  status: string;
+  message: string;
+  data: {
+    message: string;
+  };
+}
+
 // 인증 상태 관리용 타입
 export interface AuthUser {
   id: number;

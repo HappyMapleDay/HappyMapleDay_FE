@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { useAuth } from "../../store/authStore";
+import { changePassword } from "../../services/authService";
 import { Character } from "../../types";
 import { mockAllCharacters } from "../../data/mockCharacters";
 
@@ -22,6 +23,7 @@ export default function SettingsPage() {
   // 비밀번호 변경 관련 상태
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   
   // 인증 상태 확인 및 리다이렉션
   useEffect(() => {
@@ -63,26 +65,51 @@ export default function SettingsPage() {
     }
   };
 
+  // 비밀번호 검증 함수 (회원가입과 동일)
+  const validatePassword = (pwd: string, confirmPwd: string) => {
+    setPasswordError("");
+    
+    // 비밀번호 규칙 검증: 10자 이상
+    if (pwd.length < 10) {
+      setPasswordError("유효하지 않은 비밀번호입니다. 다시 입력해주세요.");
+      return false;
+    }
+    
+    // 비밀번호 일치 확인
+    if (pwd !== confirmPwd) {
+      setPasswordError("비밀번호가 일치하지 않습니다.");
+      return false;
+    }
+    
+    return true;
+  };
+
   // 비밀번호 변경 처리
   const handlePasswordChange = async () => {
-    if (newPassword !== confirmPassword) {
-      alert('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.');
+    if (!validatePassword(newPassword, confirmPassword)) {
       return;
     }
     
     try {
-      // TODO: 비밀번호 변경 API 호출
-      console.log('비밀번호 변경 요청');
+      const response = await changePassword({
+        mainCharacterName: mainCharacterName || '',
+        newPassword: newPassword
+      });
       
-      // 성공 시 상태 초기화
-      setNewPassword("");
-      setConfirmPassword("");
-      setCurrentView('main');
-      alert('비밀번호가 성공적으로 변경되었습니다.');
+      if (response.status === 'success') {
+        // 성공 시 상태 초기화
+        setNewPassword("");
+        setConfirmPassword("");
+        setPasswordError("");
+        setCurrentView('main');
+        alert(response.data.message);
+      } else {
+        alert('비밀번호 변경에 실패했습니다.');
+      }
       
     } catch (error) {
       console.error('비밀번호 변경 실패:', error);
-      alert('비밀번호 변경에 실패했습니다.');
+      alert(error instanceof Error ? error.message : '비밀번호 변경에 실패했습니다.');
     }
   };
 
@@ -336,33 +363,49 @@ export default function SettingsPage() {
                   <input
                     type="password"
                     value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
+                    onChange={(e) => {
+                      setNewPassword(e.target.value);
+                      if (confirmPassword && passwordError) {
+                        validatePassword(e.target.value, confirmPassword);
+                      }
+                    }}
                     placeholder="새로운 비밀번호를 입력해주세요"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
                   />
+                  {passwordError && passwordError !== "비밀번호가 일치하지 않습니다." && (
+                    <p className="text-red-500 text-sm mt-2">{passwordError}</p>
+                  )}
                 </div>
                 
                 <div>
                   <input
                     type="password"
                     value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (newPassword && e.target.value) {
+                        validatePassword(newPassword, e.target.value);
+                      }
+                    }}
                     placeholder="확인을 위해 비밀번호를 다시 입력해주세요"
                     className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
                   />
+                  {passwordError && passwordError === "비밀번호가 일치하지 않습니다." && (
+                    <p className="text-red-500 text-sm mt-2">{passwordError}</p>
+                  )}
                 </div>
               </div>
 
               {/* 비밀번호 변경 완료 버튼 */}
               <button
                 onClick={handlePasswordChange}
-                disabled={!newPassword || !confirmPassword}
+                disabled={!newPassword || !confirmPassword || !!passwordError}
                 className={`w-full font-medium py-3 px-4 rounded-lg transition-colors ${
-                  newPassword && confirmPassword
+                  newPassword && confirmPassword && !passwordError
                     ? 'text-white hover:opacity-90'
                     : 'bg-gray-400 text-white cursor-not-allowed'
                 }`}
-                style={newPassword && confirmPassword ? { backgroundColor: '#FF9100' } : {}}
+                style={newPassword && confirmPassword && !passwordError ? { backgroundColor: '#FF9100' } : {}}
               >
                 비밀번호 변경 완료
               </button>
