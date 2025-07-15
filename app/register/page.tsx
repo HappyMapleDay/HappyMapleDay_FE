@@ -6,12 +6,13 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../store/authStore";
 import { Character } from "../../types";
+import nexonApiService from "../../services/nexonApiService";
 
 export default function Register() {
   const router = useRouter();
-  const { signup, isLoading, error, clearError } = useAuth();
+  const { signup, error, clearError, isLoading } = useAuth();
   const [step, setStep] = useState<'api' | 'character'>('api');
-  const [apiKey] = useState("test_api_key_9x7k2m4n8p1q5w");
+  const [apiKey, setApiKey] = useState("");
   const [characters, setCharacters] = useState<Character[]>([]);
   const [selectedCharacter, setSelectedCharacter] = useState<Character | null>(null);
   const [selectedBossCharacters, setSelectedBossCharacters] = useState<Character[]>([]);
@@ -19,71 +20,37 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [isLoadingCharacters, setIsLoadingCharacters] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     clearError();
     
-    // API 키로 캐릭터 목록 불러오기 로직 (임시)
-    // 실제로는 Nexon API 호출하여 캐릭터 목록을 가져와야 함
-    setTimeout(() => {
-      // 간단한 API 키 검증 (실제로는 Nexon API 호출)
-      // 테스트 케이스 추가
-      if (apiKey === "test_api_key_9x7k2m4n8p1q5w") {
-        // 테스트 케이스는 통과
-      } else if (apiKey.length < 50) {
-        // 실제로는 별도의 에러 상태 관리가 필요할 수 있음
-        alert("입력한 API key가 유효하지 않습니다. \n 확인 후 다시 입력해주세요.");
+    if (!apiKey.trim()) {
+      alert("API 키를 입력해주세요.");
+      return;
+    }
+    
+    setIsLoadingCharacters(true);
+    
+    try {
+      // 실제 넥슨 API 호출
+      const charactersData = await nexonApiService.getCharacterList(apiKey);
+      
+      if (charactersData.length === 0) {
+        alert("레벨 235 이상의 캐릭터가 없습니다. 캐릭터를 더 키운 후 다시 시도해주세요.");
+        setIsLoadingCharacters(false);
         return;
       }
       
-      // 성공 시 임시 캐릭터 데이터 설정 후 다음 단계로
-      const mockCharacters: Character[] = [
-        {
-          id: "1",
-          name: "뱌꺄",
-          server: "크로아",
-          job: "패스파인더",
-          level: 282,
-          image: "/image/logo.png" // 임시 이미지
-        },
-        {
-          id: "2", 
-          name: "바카",
-          server: "크로아",
-          job: "비숍",
-          level: 280,
-          image: "/image/logo.png" // 임시 이미지
-        },
-        {
-          id: "3",
-          name: "뱌꺄",
-          server: "크로아",
-          job: "패스파인더",
-          level: 282,
-          image: "/image/logo.png" // 임시 이미지
-        },
-        {
-          id: "4", 
-          name: "바카",
-          server: "크로아",
-          job: "비숍",
-          level: 280,
-          image: "/image/logo.png" // 임시 이미지
-        },
-        {
-          id: "5",
-          name: "뱌꺄",
-          server: "크로아",
-          job: "패스파인더",
-          level: 282,
-          image: "/image/logo.png" // 임시 이미지
-        }
-      ];
-      
-      setCharacters(mockCharacters);
+      setCharacters(charactersData);
       setStep('character');
-    }, 2000);
+    } catch (error) {
+      console.error('캐릭터 목록 조회 실패:', error);
+      alert("캐릭터 목록을 불러오는데 실패했습니다. API 키를 확인해주세요.");
+    } finally {
+      setIsLoadingCharacters(false);
+    }
   };
 
   const handleCharacterSelect = (character: Character) => {
@@ -122,11 +89,20 @@ export default function Register() {
   };
 
   const handleRegisterComplete = async () => {
+    console.log('회원가입 시작');
+    
     if (!selectedCharacter || !password || !confirmPassword || !agreeToTerms) {
+      console.log('필수 입력 정보 누락:', {
+        selectedCharacter: !!selectedCharacter,
+        password: !!password,
+        confirmPassword: !!confirmPassword,
+        agreeToTerms
+      });
       return;
     }
     
     if (!validatePassword(password, confirmPassword)) {
+      console.log('비밀번호 검증 실패');
       return;
     }
 
@@ -140,11 +116,21 @@ export default function Register() {
       dataCollectionAgreed: agreeToTerms
     };
     
-    const success = await signup(signupData);
+    console.log('회원가입 데이터:', signupData);
+    
+    try {
+      const success = await signup(signupData);
+      console.log('회원가입 API 결과:', success);
 
-    if (success) {
-      alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
-      router.push('/');
+      if (success) {
+        alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
+        router.push('/');
+      } else {
+        alert("회원가입에 실패했습니다. 다시 시도해주세요.");
+      }
+    } catch (error) {
+      console.error('회원가입 에러:', error);
+      alert("회원가입 중 오류가 발생했습니다. 다시 시도해주세요.");
     }
   };
 
@@ -184,15 +170,10 @@ export default function Register() {
                   id="apiKey"
                   name="apiKey"
                   value={apiKey}
-                  readOnly
-                  placeholder="테스트용 API 키가 자동으로 설정됩니다."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="넥슨 OpenAPI에서 발급받은 API key를 입력해주세요."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600"
                 />
-              </div>
-
-              {/* 테스트용 API 키 안내 */}
-              <div className="text-sm text-gray-500 text-center">
-                현재 테스트용 API 키가 자동으로 설정되었습니다.
               </div>
 
               {/* 에러 메시지 */}
@@ -205,14 +186,14 @@ export default function Register() {
               {/* 캐릭터 목록 불러오기 버튼 */}
               <button
                 type="submit"
-                disabled={!isFormValid || isLoading}
+                disabled={!isFormValid || isLoadingCharacters}
                 className={`w-full font-medium py-3 px-4 rounded-lg transition-colors ${
-                  isFormValid && !isLoading
+                  isFormValid && !isLoadingCharacters
                     ? "bg-[#FF9100] hover:bg-[#E8820E] text-white"
                     : "bg-gray-400 text-white cursor-not-allowed"
                 }`}
               >
-                {isLoading ? "불러오는 중..." : "캐릭터 목록 불러오기"}
+                {isLoadingCharacters ? "불러오는 중..." : "캐릭터 목록 불러오기"}
               </button>
             </form>
           ) : (
@@ -283,8 +264,22 @@ export default function Register() {
                           className="rounded-lg"
                         />
                         <div className="flex-1">
-                          <div className="font-medium text-gray-900 mb-1">
-                            {character.name} <span className="text-sm bg-gray-200 rounded-4xl px-2 py-1">⭐ {character.server}</span>
+                          <div className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+                            {character.name}
+                            <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1">
+                              {character.serverIcon ? (
+                                <Image
+                                  src={character.serverIcon}
+                                  alt={character.server}
+                                  width={16}
+                                  height={16}
+                                  className="rounded-sm"
+                                />
+                              ) : (
+                                <span>⭐</span>
+                              )}
+                              {character.server}
+                            </span>
                           </div>
                           <div className="text-gray-600">
                             {character.job} | Lv.{character.level}
@@ -332,8 +327,22 @@ export default function Register() {
                             className="rounded-lg"
                           />
                           <div className="flex-1">
-                            <div className="font-medium text-gray-900 mb-1">
-                              {character.name} <span className="text-sm bg-gray-200 rounded-4xl px-2 py-1">⭐ {character.server}</span>
+                            <div className="font-medium text-gray-900 mb-1 flex items-center gap-2">
+                              {character.name}
+                              <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1">
+                                {character.serverIcon ? (
+                                  <Image
+                                    src={character.serverIcon}
+                                    alt={character.server}
+                                    width={16}
+                                    height={16}
+                                    className="rounded-sm"
+                                  />
+                                ) : (
+                                  <span>⭐</span>
+                                )}
+                                {character.server}
+                              </span>
                             </div>
                             <div className="text-gray-600">
                               {character.job} | Lv.{character.level}
@@ -424,14 +433,14 @@ export default function Register() {
                   
                   <button
                     onClick={handleRegisterComplete}
-                    disabled={!password || !confirmPassword || !agreeToTerms || !!passwordError}
+                    disabled={!password || !confirmPassword || !agreeToTerms || !!passwordError || isLoading}
                     className={`w-full mt-8 py-4 px-4 rounded-lg font-medium text-lg transition-all duration-200 ${
-                      password && confirmPassword && agreeToTerms && !passwordError
+                      password && confirmPassword && agreeToTerms && !passwordError && !isLoading
                         ? 'bg-[#FF9100] text-white cursor-pointer hover:bg-[#E8820E]'
                         : 'bg-gray-400 text-white cursor-not-allowed'
                     }`}
                   >
-                    회원가입 완료
+                    {isLoading ? "회원가입 중..." : "회원가입 완료"}
                   </button>
                 </div>
               )}

@@ -184,7 +184,10 @@ class AuthService {
   // 회원가입
   async signup(request: SignupRequestDto): Promise<SignupResponseDto> {
     try {
-      return await this.httpClient.post<SignupResponseDto>('/api/user/register', request);
+      console.log('회원가입 API 호출 시작, 요청 데이터:', request);
+      const response = await this.httpClient.post<SignupResponseDto>('/api/user/register', request);
+      console.log('회원가입 API 응답:', response);
+      return response;
     } catch (error) {
       console.error('회원가입 실패:', error);
       throw error;

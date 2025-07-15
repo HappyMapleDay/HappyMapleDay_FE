@@ -3,6 +3,7 @@ export interface Character {
   id: string;
   name: string;
   server: string;
+  serverIcon?: string; // 서버 아이콘 URL
   job: string;
   level: number;
   image: string;
