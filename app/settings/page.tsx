@@ -20,7 +20,6 @@ export default function SettingsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   
   // 비밀번호 변경 관련 상태
-  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   
@@ -76,7 +75,6 @@ export default function SettingsPage() {
       console.log('비밀번호 변경 요청');
       
       // 성공 시 상태 초기화
-      setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
       setCurrentView('main');
@@ -207,26 +205,25 @@ export default function SettingsPage() {
       <div className="min-h-screen bg-gray-50">
         {renderHeader()}
         
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="mb-8">
-              <div className="flex items-center gap-4 mb-4">
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6" style={{ minHeight: 'calc(100vh - 19rem)' }}>
+            <div className="mb-4">
+              <div className="flex items-center gap-3 mb-4">
                 <button
                   onClick={() => setCurrentView('main')}
-                  className="text-gray-600 hover:text-orange-500 transition-colors"
+                  className="text-gray-600 hover:text-orange-500 transition-colors py-2"
                 >
-                  ← 뒤로가기
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
-                <h1 className="text-2xl font-bold text-gray-900">본캐 변경</h1>
+                <h1 className="text-2xl font-bold" style={{ color: '#FF9100' }}>본캐 변경</h1>
               </div>
-              <p className="text-gray-600">
-                현재 본캐: <span className="font-semibold text-orange-600">{mainCharacterName}</span>
-              </p>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">
-              현재 본캐를 혼재한 캐릭터리스트 중 바뀔캐릭터를 선택하고 변경할 수 있습니다.<br />
-              변경양은 로그인 시 관리자의 id로 활용되며, 언제든지 변경 가능합니다.
+            <p className="text-sm text-gray-500 mb-6">
+              선택한 본캐는 보스돌이 캐릭터(통칭, 보돌캐)로 취급됩니다.<br />
+              닉네임이 로그인 시 필요한 ID로 활용되며, 언제든지 변경 가능합니다.
             </p>
             
             {/* 캐릭터 검색 */}
@@ -234,19 +231,21 @@ export default function SettingsPage() {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="닉네임으로 검색해 주세요."
+                  placeholder="닉네임으로 검색해주세요."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
-                <button className="absolute right-3 top-1/2 transform -translate-y-1/2 text-orange-500">
-                  🔍
+                <button className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                  <svg className="w-5 h-5" style={{ color: '#FF9100' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
                 </button>
               </div>
             </div>
 
-            {/* 캐릭터 리스트 */}
-            <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
+            {/* 캐릭터 목록 */}
+            <div className="space-y-3 mb-6 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 27rem)' }}>
               {filteredCharacters.map((character) => (
                 <div
                   key={character.id}
@@ -277,11 +276,12 @@ export default function SettingsPage() {
             <button
               onClick={handleMainCharacterChange}
               disabled={!selectedCharacter}
-              className={`w-full px-4 py-3 rounded-lg transition-colors ${
+              className={`w-full py-3 rounded-lg font-medium transition-colors ${
                 selectedCharacter
-                  ? 'bg-orange-500 text-white hover:bg-orange-600'
+                  ? 'text-white hover:opacity-90'
                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
               }`}
+              style={selectedCharacter ? { backgroundColor: '#FF9100' } : {}}
             >
               본캐 선택 완료
             </button>
@@ -291,80 +291,81 @@ export default function SettingsPage() {
     );
   } else {
     return (
-      <div className="min-h-screen bg-gray-50">
-        {renderHeader()}
-        
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <div className="mb-8">
-              <div className="flex items-center gap-4 mb-4">
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white min-h-screen flex items-center justify-center w-full max-w-3xl">
+          <div className="p-12 w-full max-w-md">
+            {/* 로고 및 브랜드명 */}
+            <div className="text-center mb-8">
+              <div className="flex items-center justify-center gap-2 mb-8 relative">
+                {/* 뒤로가기 버튼 */}
                 <button
                   onClick={() => setCurrentView('main')}
-                  className="text-gray-600 hover:text-orange-500 transition-colors"
+                  className="absolute left-0 text-gray-600 hover:text-orange-500 transition-colors py-2"
                 >
-                  ← 뒤로가기
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
                 </button>
-                <h1 className="text-2xl font-bold text-gray-900">비밀번호 변경</h1>
+                
+                <Image
+                  src="/image/logo.png"
+                  alt="메요일조아 로고"
+                  width={40}
+                  height={40}
+                  className="rounded-lg"
+                />
+                <h1 className="text-2xl font-bold">메요일조아</h1>
               </div>
-              <p className="text-gray-600 text-sm">
-                비밀번호는 10자 이상으로 입력해주세요.
-              </p>
             </div>
 
             {/* 비밀번호 변경 폼 */}
-            <div className="max-w-md mx-auto">
+            <div className="space-y-6">
+              {/* 비밀번호 제목 */}
+              <div>
+                <h2 className="text-lg font-medium mb-2" style={{ color: '#FF9100' }}>
+                  비밀번호
+                </h2>
+                <p className="text-sm text-gray-400 mb-6">
+                  비밀번호는 10자 이상으로 만들어주세요.
+                </p>
+              </div>
+
+              {/* 비밀번호 입력 필드들 */}
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    현재 비밀번호
-                  </label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={(e) => setCurrentPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                    placeholder="현재 비밀번호를 입력해주세요"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    새 비밀번호
-                  </label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="새로운 비밀번호를 입력해주세요"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    새 비밀번호 확인
-                  </label>
                   <input
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                     placeholder="확인을 위해 비밀번호를 다시 입력해주세요"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
                   />
                 </div>
-
-                <button
-                  onClick={handlePasswordChange}
-                  disabled={!currentPassword || !newPassword || !confirmPassword}
-                  className={`w-full px-4 py-3 rounded-lg transition-colors ${
-                    currentPassword && newPassword && confirmPassword
-                      ? 'bg-orange-500 text-white hover:bg-orange-600'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                >
-                  비밀번호 변경 완료
-                </button>
               </div>
+
+              {/* 비밀번호 변경 완료 버튼 */}
+              <button
+                onClick={handlePasswordChange}
+                disabled={!newPassword || !confirmPassword}
+                className={`w-full font-medium py-3 px-4 rounded-lg transition-colors ${
+                  newPassword && confirmPassword
+                    ? 'text-white hover:opacity-90'
+                    : 'bg-gray-400 text-white cursor-not-allowed'
+                }`}
+                style={newPassword && confirmPassword ? { backgroundColor: '#FF9100' } : {}}
+              >
+                비밀번호 변경 완료
+              </button>
             </div>
           </div>
         </div>
