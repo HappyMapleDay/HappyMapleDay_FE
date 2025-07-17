@@ -23,12 +23,6 @@ class HttpClient {
 
     // 캐릭터 목록 조회는 토큰이 필요없는 API이므로 Authorization 헤더 제외
 
-    console.log('API 요청:', {
-      url: `${API_BASE_URL}${url}`,
-      method: config.method,
-      headers: config.headers,
-    });
-
     const response = await fetch(`${API_BASE_URL}${url}`, config);
     
     // 401 에러 시 토큰 갱신 시도
@@ -41,9 +35,6 @@ class HttpClient {
     }
 
     const data = await response.json();
-    
-    console.log('서버 응답 상태:', response.status);
-    console.log('서버 응답 데이터:', data);
     
     if (!response.ok) {
       console.error('API 요청 실패:', {
@@ -122,31 +113,20 @@ class CharacterService {
   // 캐릭터 목록 조회
   async getCharacterList(): Promise<Character[]> {
     try {
-      console.log('캐릭터 목록 조회 API 호출 시작');
-      
       // 저장된 사용자 ID 조회
-      const accessToken = TokenManager.getAccessToken();
       const userId = TokenManager.getUserId();
-      
-      console.log('액세스 토큰:', accessToken ? '존재함' : '없음');
-      console.log('사용자 ID:', userId);
       
       if (!userId) {
         throw new Error('사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
       }
       
       const response = await this.httpClient.get<CharacterListResponseDto>(`/api/character/${userId}`);
-      console.log('캐릭터 목록 조회 API 응답:', response);
-      console.log('응답 데이터 개수:', response.data?.length || 0);
       
       if (response.status === 'success' && response.data) {
-        console.log('백엔드에서 받은 캐릭터 데이터:', response.data);
         const characters = response.data.map(char => this.transformCharacterResponse(char));
-        console.log('변환된 캐릭터 데이터:', characters);
         
         // 캐릭터 정보가 부족한 경우 넥슨 API로 보완
         const enhancedCharacters = await this.enhanceCharacterInfo(characters);
-        console.log('넥슨 API로 보완된 캐릭터 데이터:', enhancedCharacters);
         
         return enhancedCharacters;
       } else {
@@ -162,7 +142,6 @@ class CharacterService {
   private async enhanceCharacterInfo(characters: Character[]): Promise<Character[]> {
     const apiKey = TokenManager.getNexonApiKey();
     if (!apiKey) {
-      console.log('넥슨 API 키가 없어 캐릭터 정보 보완을 건너뜁니다.');
       return characters;
     }
 
@@ -171,7 +150,6 @@ class CharacterService {
         // 정보가 부족한 경우만 넥슨 API 호출
                  if (character.server === 'unknown' || character.job === 'unknown' || character.level === 0) {
            try {
-             console.log(`캐릭터 ${character.name}의 정보를 넥슨 API로 보완합니다.`);
              const enhancedInfo = await nexonApiService.getCharacterBasic(character.ocid, apiKey);
             
             if (enhancedInfo) {
@@ -198,11 +176,7 @@ class CharacterService {
   // 캐릭터 일괄 등록
   async registerCharacters(request: CharacterBulkCreateRequest): Promise<CharacterBulkCreateResponse> {
     try {
-      console.log('캐릭터 일괄 등록 API 호출 시작:', request);
-      
       const response = await this.httpClient.post<CharacterBulkCreateResponse>('/api/character/register', request);
-      console.log('캐릭터 일괄 등록 API 응답:', response);
-      
       return response;
     } catch (error) {
       console.error('캐릭터 일괄 등록 실패:', error);

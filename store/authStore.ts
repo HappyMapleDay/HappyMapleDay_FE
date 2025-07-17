@@ -42,7 +42,6 @@ export const useAuthStore = create<AuthState>()(
         
         try {
           const response = await authService.login(credentials);
-          console.log('로그인 응답:', response);
           
           if (response.status === "success" && response.data) {
             const user: AuthUser = {

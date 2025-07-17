@@ -47,12 +47,12 @@ export default function SettingsPage() {
     
     try {
       // 본캐 변경 API 호출 (테스트용 API키 사용)
-      const requestData = {
-        newMainCharacterName: selectedCharacter.name,
-        nexonApiKey: "test_api_key_9x7k2m4n8p1q5w"
-      };
+      // const requestData = {
+      //   newMainCharacterName: selectedCharacter.name,
+      //   nexonApiKey: "test_api_key_9x7k2m4n8p1q5w"
+      // };
       
-      console.log('본캐 변경 요청:', requestData);
+      // TODO: 백엔드 API 호출 구현 필요
       
       // 성공 시 상태 초기화
       setSelectedCharacter(null);

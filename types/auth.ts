@@ -210,9 +210,13 @@ export interface SavedCharacter {
 }
 
 export interface CharacterBulkCreateResponse {
-  savedCharacters: SavedCharacter[];
-  totalCount: number;
-  successCount: number;
-  failureCount: number;
-  errors: string[];
+  status: string; // "success" 또는 "error"
+  message: string;
+  data: {
+    savedCharacters: SavedCharacter[];
+    totalCount: number;
+    successCount: number;
+    failureCount: number;
+    errors: string[];
+  };
 } 

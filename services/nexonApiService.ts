@@ -90,7 +90,7 @@ class NexonApiService {
   // API 키로 계정의 캐릭터 목록 조회
   async getCharacterList(apiKey: string): Promise<Character[]> {
     try {
-      console.log('넥슨 API 호출 시작, API 키:', apiKey.substring(0, 10) + '...');
+      
       
       // 1단계: 캐릭터 목록 조회
       const listResponse = await fetch(`${this.baseUrl}/character/list`, {
@@ -100,7 +100,7 @@ class NexonApiService {
         }
       });
 
-      console.log('캐릭터 목록 API 응답 상태:', listResponse.status);
+      
 
       if (!listResponse.ok) {
         const errorText = await listResponse.text();
@@ -109,7 +109,7 @@ class NexonApiService {
       }
 
       const listData: NexonCharacterListResponse = await listResponse.json();
-      console.log('캐릭터 목록 API 응답 데이터:', listData);
+      
       
       // 2단계: 모든 계정의 캐릭터를 하나의 배열로 통합
       const allCharacters: NexonCharacterListItem[] = [];
@@ -117,11 +117,8 @@ class NexonApiService {
         allCharacters.push(...account.character_list);
       });
 
-      console.log('전체 캐릭터 수:', allCharacters.length);
-
       // 3단계: 레벨 235 이상 필터링
       const highLevelCharacters = allCharacters.filter(char => char.character_level >= 235);
-      console.log('레벨 235 이상 캐릭터 수:', highLevelCharacters.length);
 
       // 4단계: 각 캐릭터의 상세 정보 조회 (이미지 포함)
       const characterPromises = highLevelCharacters.map(async (char) => {
@@ -139,17 +136,9 @@ class NexonApiService {
           }
 
           const basicData: NexonCharacterBasic = await basicResponse.json();
-          console.log(`캐릭터 ${char.character_name} 전체 정보:`, basicData);
+
           
-          // 서버 아이콘 관련 필드들 확인
-          console.log('서버 아이콘 관련 필드들:', {
-            world_name: basicData.world_name,
-            world_image: basicData.world_image,
-            server_image: basicData.server_image,
-            world_icon: basicData.world_icon,
-            server_icon: basicData.server_icon,
-            character_image: basicData.character_image.substring(0, 100) + '...'
-          });
+
 
           // 서버 아이콘 매핑
           const serverIcon = getServerIcon(basicData.world_name);
@@ -183,7 +172,7 @@ class NexonApiService {
       // 레벨 내림차순 정렬
       const sortedCharacters = validCharacters.sort((a, b) => b.level - a.level);
       
-      console.log('최종 캐릭터 목록 (레벨 내림차순):', sortedCharacters);
+
 
       return sortedCharacters;
 
@@ -208,17 +197,9 @@ class NexonApiService {
       }
 
       const data: NexonCharacterBasic = await response.json();
-      console.log('단일 캐릭터 전체 정보:', data);
       
-      // 서버 아이콘 관련 필드들 확인
-      console.log('서버 아이콘 관련 필드들:', {
-        world_name: data.world_name,
-        world_image: data.world_image,
-        server_image: data.server_image,
-        world_icon: data.world_icon,
-        server_icon: data.server_icon,
-        character_image: data.character_image.substring(0, 100) + '...'
-      });
+      
+
 
       // 서버 아이콘 매핑
       const serverIcon = getServerIcon(data.world_name);

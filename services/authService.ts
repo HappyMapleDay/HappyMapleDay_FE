@@ -76,17 +76,12 @@ class HttpClient {
     url: string,
     options: RequestInit = {}
   ): Promise<T> {
-    console.log('makeRequest 받은 options:', options);
-    console.log('makeRequest 받은 options.headers:', options.headers);
-    
     const config: RequestInit = {
       ...options,
       headers: {
         ...(options.headers || {}),
       },
     };
-
-    console.log('makeRequest config.headers 초기값:', config.headers);
 
     // 인증이 필요한 요청에 토큰 추가
     const accessToken = TokenManager.getAccessToken();
@@ -97,51 +92,41 @@ class HttpClient {
       };
     }
 
-    console.log('API 요청:', {
-      url: `${API_BASE_URL}${url}`,
-      method: config.method,
-      headers: config.headers,
-      body: config.body
-    });
-
-    const response = await fetch(`${API_BASE_URL}${url}`, config);
-    
-    // 401 에러 시 토큰 갱신 시도
-    if (response.status === 401 && !url.includes('/refresh')) {
-      const refreshed = await this.attemptTokenRefresh();
-      if (refreshed) {
-        // 토큰 갱신 성공 시 원래 요청 재시도
-        const newAccessToken = TokenManager.getAccessToken();
-        config.headers = {
-          ...config.headers,
-          'Authorization': `Bearer ${newAccessToken}`,
-        };
-        return this.makeRequest(url, config);
-      } else {
-        // 토큰 갱신 실패 시 로그인 페이지로 리다이렉션
-        TokenManager.clearTokens();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/';
+    try {
+      const response = await fetch(`${API_BASE_URL}${url}`, config);
+      
+      // 401 에러 시 토큰 갱신 시도
+      if (response.status === 401 && !url.includes('/refresh')) {
+        const refreshed = await this.attemptTokenRefresh();
+        if (refreshed) {
+          // 토큰 갱신 성공 시 원래 요청 재시도
+          const newAccessToken = TokenManager.getAccessToken();
+          config.headers = {
+            ...config.headers,
+            'Authorization': `Bearer ${newAccessToken}`,
+          };
+          return this.makeRequest(url, config);
+        } else {
+          // 토큰 갱신 실패 시 로그인 페이지로 리다이렉션
+          TokenManager.clearTokens();
+          if (typeof window !== 'undefined') {
+            window.location.href = '/';
+          }
+          throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
         }
-        throw new Error('인증이 만료되었습니다. 다시 로그인해주세요.');
       }
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || `HTTP error! status: ${response.status}`);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('API 요청 오류:', error);
+      throw error;
     }
-
-    const data = await response.json();
-    
-    console.log('서버 응답 상태:', response.status);
-    console.log('서버 응답 데이터:', data);
-    
-    if (!response.ok) {
-      console.error('API 요청 실패:', {
-        status: response.status,
-        statusText: response.statusText,
-        data: data
-      });
-      throw new Error(data.message || '요청이 실패했습니다.');
-    }
-    
-    return data;
   }
 
   private async attemptTokenRefresh(): Promise<boolean> {
@@ -205,9 +190,7 @@ class AuthService {
   // 회원가입
   async signup(request: SignupRequestDto): Promise<SignupResponseDto> {
     try {
-      console.log('회원가입 API 호출 시작, 요청 데이터:', request);
       const response = await this.httpClient.post<SignupResponseDto>('/api/user/register', request);
-      console.log('회원가입 API 응답:', response);
       return response;
     } catch (error) {
       console.error('회원가입 실패:', error);
@@ -220,13 +203,7 @@ class AuthService {
     try {
       const response = await this.httpClient.post<LoginResponseDto>('/api/user/login', request);
       
-      console.log('로그인 응답 전체:', response);
-      console.log('로그인 응답 데이터:', response.data);
-      console.log('로그인 응답 user 데이터:', response.data?.user);
-      
       if (response.status === "success" && response.data) {
-        console.log('사용자 ID:', response.data.user.id);
-        // 토큰과 사용자 ID 저장
         TokenManager.setTokens(response.data.token, response.data.refreshToken, response.data.user.id);
       }
       
@@ -296,9 +273,7 @@ class AuthService {
   // 비밀번호 재설정
   async resetPassword(request: PasswordResetRequestDto): Promise<PasswordResetResponseDto> {
     try {
-      console.log('비밀번호 재설정 요청 데이터:', request);
       const response = await this.httpClient.post<PasswordResetResponseDto>('/api/user/reset-password', request);
-      console.log('비밀번호 재설정 응답:', response);
       return response;
     } catch (error) {
       console.error('비밀번호 재설정 실패:', error);

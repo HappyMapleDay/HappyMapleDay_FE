@@ -91,20 +91,11 @@ export default function Register() {
   };
 
   const handleRegisterComplete = async () => {
-    console.log('회원가입 시작');
-    
     if (!selectedCharacter || !password || !confirmPassword || !agreeToTerms) {
-      console.log('필수 입력 정보 누락:', {
-        selectedCharacter: !!selectedCharacter,
-        password: !!password,
-        confirmPassword: !!confirmPassword,
-        agreeToTerms
-      });
       return;
     }
     
     if (!validatePassword(password, confirmPassword)) {
-      console.log('비밀번호 검증 실패');
       return;
     }
 
@@ -128,11 +119,8 @@ export default function Register() {
       }))
     };
     
-    console.log('회원가입 데이터:', signupData);
-    
     try {
       const success = await signup(signupData);
-      console.log('회원가입 API 결과:', success);
 
       if (success) {
         // 넥슨 API 키 저장 (캐릭터 정보 보완용)
@@ -140,7 +128,6 @@ export default function Register() {
         
         // 회원가입 성공 후 임시로 로그인하여 사용자 ID 획득
         try {
-          console.log('캐릭터 등록을 위해 임시 로그인 시도');
           const loginSuccess = await login({
             mainCharacterName: selectedCharacter.name,
             password: password
@@ -148,7 +135,6 @@ export default function Register() {
           
           if (loginSuccess) {
             const userId = TokenManager.getUserId();
-            console.log('임시 로그인 성공, 사용자 ID:', userId);
             
             if (userId) {
               // 모든 캐릭터 정보 수집 (본캐 + 보돌캐)
@@ -168,22 +154,12 @@ export default function Register() {
                 }))
               };
               
-              console.log('캐릭터 등록 데이터:', characterRegisterData);
-              const characterResult = await registerCharacters(characterRegisterData);
-              console.log('캐릭터 등록 결과 (전체):', characterResult);
-              console.log('응답 타입:', typeof characterResult);
-              console.log('successCount:', characterResult.successCount);
-              console.log('totalCount:', characterResult.totalCount);
-              console.log('failureCount:', characterResult.failureCount);
-              console.log('savedCharacters:', characterResult.savedCharacters);
-              
-              // 캐릭터 등록 완료 후 로그아웃
-              TokenManager.clearTokens();
-              
-              if (characterResult.successCount > 0) {
-                alert(`회원가입이 완료되었습니다!\n${characterResult.successCount}명의 캐릭터가 등록되었습니다.\n로그인 페이지로 이동합니다.`);
+              const response = await registerCharacters(characterRegisterData);
+
+              if (response.data.successCount === response.data.totalCount) {
+                alert('회원가입이 완료되었습니다!');
               } else {
-                alert(`회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n[디버그 정보]\nsuccessCount: ${characterResult.successCount}\ntotalCount: ${characterResult.totalCount}\nfailureCount: ${characterResult.failureCount}\n로그인 후 설정에서 캐릭터를 등록해주세요.`);
+                alert(`캐릭터 등록 중 일부 실패했습니다. 성공: ${response.data.successCount}/${response.data.totalCount}`);
               }
             } else {
               console.error('사용자 ID를 가져올 수 없음');
@@ -198,6 +174,10 @@ export default function Register() {
           alert("회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n로그인 후 설정에서 캐릭터를 등록해주세요.");
         }
         
+        // 캐릭터 등록 완료 후 로그아웃 처리
+        TokenManager.clearTokens();
+        
+        // 로그인 페이지로 리다이렉트
         router.push('/');
       } else {
         alert("회원가입에 실패했습니다. 다시 시도해주세요.");
