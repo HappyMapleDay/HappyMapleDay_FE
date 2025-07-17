@@ -163,15 +163,29 @@ export interface CharacterListResponseDto {
 }
 
 // 캐릭터 일괄 등록 관련 타입
+export interface CharacterBulkCreateCharacter {
+  characterName: string;
+  ocid: string;
+  isMain: boolean;
+}
+
 export interface CharacterBulkCreateRequest {
-  mainCharacterName: string;
-  subCharacterNames: string[];
+  userId: number;
+  characters: CharacterBulkCreateCharacter[];
+}
+
+export interface SavedCharacter {
+  id: number;
+  ocid: string;
+  characterName: string;
+  isMain: boolean;
+  createdAt: string;
 }
 
 export interface CharacterBulkCreateResponse {
-  status: string;
-  message: string;
-  data: {
-    message: string;
-  };
+  savedCharacters: SavedCharacter[];
+  totalCount: number;
+  successCount: number;
+  failureCount: number;
+  errors: string[];
 } 

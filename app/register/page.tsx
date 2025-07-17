@@ -8,10 +8,11 @@ import { useAuth } from "../../store/authStore";
 import { Character } from "../../types";
 import nexonApiService from "../../services/nexonApiService";
 import { registerCharacters } from "../../services/characterService";
+import { TokenManager } from "../../services/authService";
 
 export default function Register() {
   const router = useRouter();
-  const { signup, error, clearError, isLoading } = useAuth();
+  const { signup, login, error, clearError, isLoading } = useAuth();
   const [step, setStep] = useState<'api' | 'character'>('api');
   const [apiKey, setApiKey] = useState("");
   const [characters, setCharacters] = useState<Character[]>([]);
@@ -124,21 +125,50 @@ export default function Register() {
       console.log('회원가입 API 결과:', success);
 
       if (success) {
-        // 회원가입 성공 후 캐릭터 정보 등록
+        // 회원가입 성공 후 로그인하여 사용자 ID 획득
         try {
-          const characterRegisterData = {
+          console.log('회원가입 후 로그인 시도');
+          const loginSuccess = await login({
             mainCharacterName: selectedCharacter.name,
-            subCharacterNames: selectedBossCharacters.map(char => char.name)
-          };
+            password: password
+          });
           
-          console.log('캐릭터 등록 데이터:', characterRegisterData);
-          const characterResult = await registerCharacters(characterRegisterData);
-          console.log('캐릭터 등록 결과:', characterResult);
-          
-          if (characterResult.status === 'success') {
-            alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
-            router.push('/');
+          if (loginSuccess) {
+            console.log('로그인 성공, 사용자 ID 획득');
+            const userId = TokenManager.getUserId();
+            
+            if (userId) {
+              // 모든 캐릭터 정보 수집 (본캐 + 보돌캐)
+              const allCharacters = [selectedCharacter, ...selectedBossCharacters];
+              
+              // 캐릭터 등록 API 호출 - 새로운 타입 정의에 맞게 수정
+              const characterRegisterData = {
+                userId: parseInt(userId),
+                characters: allCharacters.map(char => ({
+                  characterName: char.name,
+                  ocid: char.id, // 넥슨 API에서 받아온 ocid
+                  isMain: char.id === selectedCharacter.id
+                }))
+              };
+              
+              console.log('캐릭터 등록 데이터:', characterRegisterData);
+              const characterResult = await registerCharacters(characterRegisterData);
+              console.log('캐릭터 등록 결과:', characterResult);
+              
+              if (characterResult.successCount > 0) {
+                alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
+                router.push('/');
+              } else {
+                alert("회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n로그인 후 설정에서 캐릭터를 등록해주세요.");
+                router.push('/');
+              }
+            } else {
+              console.error('사용자 ID를 가져올 수 없음');
+              alert("회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n로그인 후 설정에서 캐릭터를 등록해주세요.");
+              router.push('/');
+            }
           } else {
+            console.error('회원가입 후 로그인 실패');
             alert("회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n로그인 후 설정에서 캐릭터를 등록해주세요.");
             router.push('/');
           }
