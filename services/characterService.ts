@@ -20,14 +20,7 @@ class HttpClient {
       },
     };
 
-    // 인증이 필요한 요청에 토큰 추가
-    const accessToken = TokenManager.getAccessToken();
-    if (accessToken) {
-      config.headers = {
-        ...config.headers,
-        'Authorization': `Bearer ${accessToken}`,
-      };
-    }
+    // 캐릭터 목록 조회는 토큰이 필요없는 API이므로 Authorization 헤더 제외
 
     console.log('API 요청:', {
       url: `${API_BASE_URL}${url}`,
@@ -101,7 +94,7 @@ class CharacterService {
         throw new Error('사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
       }
       
-      const response = await this.httpClient.get<CharacterListResponseDto>(`/api/character?userId=${userId}`);
+      const response = await this.httpClient.get<CharacterListResponseDto>(`/api/character/${userId}`);
       console.log('캐릭터 목록 조회 API 응답:', response);
       
       if (response.status === 'success' && response.data) {

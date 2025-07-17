@@ -23,7 +23,8 @@ export interface LoginRequestDto {
 }
 
 export interface LoginResponseDto {
-  success: boolean;
+  status: string; // "success" 또는 "error"
+  message: string;
   data: {
     token: string; // Access Token
     refreshToken: string; // Refresh Token
@@ -32,7 +33,6 @@ export interface LoginResponseDto {
       mainCharacterName: string;
     };
   };
-  message: string | null;
 }
 
 // 토큰 갱신 관련 타입

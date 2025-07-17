@@ -211,11 +211,9 @@ class AuthService {
       
       console.log('로그인 응답 전체:', response);
       console.log('로그인 응답 데이터:', response.data);
+      console.log('로그인 응답 user 데이터:', response.data?.user);
       
-      // 다양한 응답 형태 처리
-      const isSuccess = response.success || ('status' in response && (response as {status: string}).status === "success");
-      
-      if (isSuccess && response.data) {
+      if (response.status === "success" && response.data) {
         console.log('사용자 ID:', response.data.user.id);
         // 토큰과 사용자 ID 저장
         TokenManager.setTokens(response.data.token, response.data.refreshToken, response.data.user.id);
