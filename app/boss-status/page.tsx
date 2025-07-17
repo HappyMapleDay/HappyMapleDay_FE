@@ -36,12 +36,23 @@ export default function BossStatusPage() {
       try {
         setIsLoadingCharacters(true);
         const characters = await getCharacterList();
-        setBossCharacters(characters);
+        
+        // 캐릭터 목록 정렬: 본캐 최상위, 그 다음 레벨 내림차순
+        const sortedCharacters = [...characters].sort((a, b) => {
+          // 본캐인 경우 최상위로
+          if (a.isMainCharacter && !b.isMainCharacter) return -1;
+          if (!a.isMainCharacter && b.isMainCharacter) return 1;
+          
+          // 본캐가 아닌 경우 레벨 내림차순
+          return b.level - a.level;
+        });
+        
+        setBossCharacters(sortedCharacters);
         
         // 첫 번째 캐릭터나 본캐를 기본 선택
-        if (characters.length > 0) {
-          const mainCharacter = characters.find(char => char.isMainCharacter);
-          setSelectedCharacterId(mainCharacter?.id || characters[0].id);
+        if (sortedCharacters.length > 0) {
+          const mainCharacter = sortedCharacters.find(char => char.isMainCharacter);
+          setSelectedCharacterId(mainCharacter?.id || sortedCharacters[0].id);
         }
       } catch (error) {
         console.error('캐릭터 목록 조회 실패:', error);

@@ -57,6 +57,10 @@ export default function Register() {
 
   const handleCharacterSelect = (character: Character) => {
     setSelectedCharacter(character);
+    
+    // 본캐로 선택된 캐릭터가 보돌캐 목록에 있으면 제거
+    setSelectedBossCharacters(prev => prev.filter(c => c.id !== character.id));
+    
     // 다음 단계로 진행하거나 완료 처리
     alert(`본캐로 ${character.name} (${character.job}, Lv.${character.level})를 선택했습니다!`);
   };
@@ -299,7 +303,7 @@ export default function Register() {
 
                 {/* 캐릭터 목록 */}
                 <div className="space-y-3 bg-gray-100 rounded-lg p-4">
-                  {characters.map((character) => (
+                  {characters.slice(0, 5).map((character) => (
                     <div
                       key={character.id}
                       onClick={() => handleCharacterSelect(character)}
@@ -344,6 +348,13 @@ export default function Register() {
                   ))}
                 </div>
 
+                {/* 본캐 선택 표시 개수 안내 */}
+                {characters.length > 5 && (
+                  <p className="text-sm text-gray-500 text-center mt-2">
+                    레벨 높은 순으로 5개 캐릭터만 표시됩니다. (총 {characters.length}개 캐릭터)
+                  </p>
+                )}
+
                 {/* 안내 텍스트 */}
                 <p className="text-sm text-orange-500 text-center mt-4">
                   캐릭터를 클릭하여 본캐를 선택해주세요
@@ -353,16 +364,19 @@ export default function Register() {
               {/* 보돌캐 선택 섹션 - 본캐 선택 후에만 표시 */}
               {selectedCharacter && (
                 <div className="mt-8">
-                  <h2 className="text-lg font-medium text-orange-500 mb-2">보돌캐 선택 (선택)</h2>
+                  <h2 className="text-lg font-medium text-orange-500 mb-2">보돌캐 선택</h2>
                   <p className="text-sm text-gray-600 mb-4">
                     보스돌이를 도는 캐릭터들을 선택해주세요.
                     <br />
                     나중에 보돌현황 화면에서 변경 가능합니다.
                   </p>
+                  <p className="text-xs text-gray-600 mb-4">
+                  레벨 235 이상의 캐릭터만 선택 가능합니다.
+                  </p>
 
                   {/* 보돌캐 캐릭터 목록 */}
                   <div className="space-y-3 bg-gray-100 rounded-lg p-4">
-                    {characters.map((character) => (
+                    {characters.filter(character => character.id !== selectedCharacter?.id).map((character) => (
                       <div
                         key={`boss-${character.id}`}
                         onClick={() => handleBossCharacterToggle(character)}
