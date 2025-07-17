@@ -143,4 +143,19 @@ export interface ApiErrorResponse {
   status: string;
   message: string;
   data: null;
+}
+
+// 캐릭터 관련 타입
+export interface CharacterResponse {
+  id: number;
+  ocid: string;
+  characterName: string;
+  isMain: boolean;
+  createdAt: string;
+}
+
+export interface CharacterListResponseDto {
+  status: string;
+  message: string;
+  data: CharacterResponse[];
 } 

@@ -9,8 +9,9 @@ import { BossSelection } from "../../types/boss";
 import BossSelectionModal from "../../components/BossSelectionModal";
 import AddBossCharacterModal from "../../components/AddBossCharacterModal";
 import { mockBosses } from "../../data/mockBosses";
-import { getCurrentBossCharacters, mockAllCharacters } from "../../data/mockCharacters";
+import { mockAllCharacters } from "../../data/mockCharacters";
 import { useAuth } from "../../store/authStore";
+import { getCharacterList } from "../../services/characterService";
 
 export default function BossStatusPage() {
   const router = useRouter();
@@ -27,8 +28,34 @@ export default function BossStatusPage() {
     }
   }, [isLoggedIn, router]);
 
+  // 캐릭터 목록 조회
+  useEffect(() => {
+    const fetchCharacters = async () => {
+      if (!isLoggedIn) return;
+      
+      try {
+        setIsLoadingCharacters(true);
+        const characters = await getCharacterList();
+        setBossCharacters(characters);
+        
+        // 첫 번째 캐릭터나 본캐를 기본 선택
+        if (characters.length > 0) {
+          const mainCharacter = characters.find(char => char.isMainCharacter);
+          setSelectedCharacterId(mainCharacter?.id || characters[0].id);
+        }
+      } catch (error) {
+        console.error('캐릭터 목록 조회 실패:', error);
+      } finally {
+        setIsLoadingCharacters(false);
+      }
+    };
+
+    fetchCharacters();
+  }, [isLoggedIn]);
+
   // 현재 보돌캐로 선택된 캐릭터들
-  const [bossCharacters, setBossCharacters] = useState<Character[]>(getCurrentBossCharacters());
+  const [bossCharacters, setBossCharacters] = useState<Character[]>([]);
+  const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>("1");
   const [dateRange] = useState({
     startDate: "2025.06.05",
@@ -310,7 +337,17 @@ export default function BossStatusPage() {
               </div>
 
               <div className="space-y-3 h-[calc(100vh-350px)] overflow-y-auto overflow-x-visible pr-2">
-                {bossCharacters.map((character: Character) => (
+                {isLoadingCharacters ? (
+                  <div className="text-center py-8">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <p className="mt-2 text-gray-500">캐릭터 목록을 불러오는 중...</p>
+                  </div>
+                ) : bossCharacters.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-gray-500">캐릭터가 없습니다.</p>
+                  </div>
+                ) : (
+                  bossCharacters.map((character: Character) => (
                   <div
                     key={character.id}
                     className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
@@ -361,7 +398,8 @@ export default function BossStatusPage() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
