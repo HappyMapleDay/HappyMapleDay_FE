@@ -160,4 +160,18 @@ export interface CharacterListResponseDto {
   status: string;
   message: string;
   data: CharacterResponse[];
+}
+
+// 캐릭터 일괄 등록 관련 타입
+export interface CharacterBulkCreateRequest {
+  mainCharacterName: string;
+  subCharacterNames: string[];
+}
+
+export interface CharacterBulkCreateResponse {
+  status: string;
+  message: string;
+  data: {
+    message: string;
+  };
 } 

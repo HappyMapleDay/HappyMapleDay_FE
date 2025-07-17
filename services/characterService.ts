@@ -1,4 +1,4 @@
-import { CharacterListResponseDto, CharacterResponse } from '../types/auth';
+import { CharacterListResponseDto, CharacterResponse, CharacterBulkCreateRequest, CharacterBulkCreateResponse } from '../types/auth';
 import { Character } from '../types';
 import { TokenManager } from './authService';
 
@@ -59,6 +59,17 @@ class HttpClient {
   async get<T>(url: string, headers?: Record<string, string>): Promise<T> {
     return this.makeRequest<T>(url, { method: 'GET', headers });
   }
+
+  async post<T>(url: string, data?: unknown, headers?: Record<string, string>): Promise<T> {
+    return this.makeRequest<T>(url, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+    });
+  }
 }
 
 // 캐릭터 서비스 클래스
@@ -107,10 +118,26 @@ class CharacterService {
       throw error;
     }
   }
+
+  // 캐릭터 일괄 등록
+  async registerCharacters(request: CharacterBulkCreateRequest): Promise<CharacterBulkCreateResponse> {
+    try {
+      console.log('캐릭터 일괄 등록 API 호출 시작:', request);
+      
+      const response = await this.httpClient.post<CharacterBulkCreateResponse>('/api/character/register', request);
+      console.log('캐릭터 일괄 등록 API 응답:', response);
+      
+      return response;
+    } catch (error) {
+      console.error('캐릭터 일괄 등록 실패:', error);
+      throw error;
+    }
+  }
 }
 
 // 싱글톤 인스턴스
 export const characterService = new CharacterService();
 
 // 편의 함수
-export const getCharacterList = () => characterService.getCharacterList(); 
+export const getCharacterList = () => characterService.getCharacterList();
+export const registerCharacters = (request: CharacterBulkCreateRequest) => characterService.registerCharacters(request); 

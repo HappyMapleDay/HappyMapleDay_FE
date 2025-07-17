@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../store/authStore";
 import { Character } from "../../types";
 import nexonApiService from "../../services/nexonApiService";
+import { registerCharacters } from "../../services/characterService";
 
 export default function Register() {
   const router = useRouter();
@@ -123,8 +124,29 @@ export default function Register() {
       console.log('회원가입 API 결과:', success);
 
       if (success) {
-        alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
-        router.push('/');
+        // 회원가입 성공 후 캐릭터 정보 등록
+        try {
+          const characterRegisterData = {
+            mainCharacterName: selectedCharacter.name,
+            subCharacterNames: selectedBossCharacters.map(char => char.name)
+          };
+          
+          console.log('캐릭터 등록 데이터:', characterRegisterData);
+          const characterResult = await registerCharacters(characterRegisterData);
+          console.log('캐릭터 등록 결과:', characterResult);
+          
+          if (characterResult.status === 'success') {
+            alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
+            router.push('/');
+          } else {
+            alert("회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n로그인 후 설정에서 캐릭터를 등록해주세요.");
+            router.push('/');
+          }
+        } catch (characterError) {
+          console.error('캐릭터 등록 에러:', characterError);
+          alert("회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n로그인 후 설정에서 캐릭터를 등록해주세요.");
+          router.push('/');
+        }
       } else {
         alert("회원가입에 실패했습니다. 다시 시도해주세요.");
       }
