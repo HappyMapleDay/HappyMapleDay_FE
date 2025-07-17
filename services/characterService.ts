@@ -108,6 +108,7 @@ class CharacterService {
 
     return {
       id: response.id.toString(),
+      ocid: response.ocid,
       name: response.characterName,
       server: response.worldName || "unknown",
       serverIcon: response.worldName ? getServerIcon(response.worldName) : undefined,
@@ -164,10 +165,10 @@ class CharacterService {
     const enhancedCharacters = await Promise.all(
       characters.map(async (character) => {
         // 정보가 부족한 경우만 넥슨 API 호출
-        if (character.server === 'unknown' || character.job === 'unknown' || character.level === 0) {
-          try {
-            console.log(`캐릭터 ${character.name}의 정보를 넥슨 API로 보완합니다.`);
-            const enhancedInfo = await nexonApiService.getCharacterBasic(character.id, apiKey);
+                 if (character.server === 'unknown' || character.job === 'unknown' || character.level === 0) {
+           try {
+             console.log(`캐릭터 ${character.name}의 정보를 넥슨 API로 보완합니다.`);
+             const enhancedInfo = await nexonApiService.getCharacterBasic(character.ocid, apiKey);
             
             if (enhancedInfo) {
               return {

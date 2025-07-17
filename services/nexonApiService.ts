@@ -157,6 +157,7 @@ class NexonApiService {
           // Character 타입에 맞게 변환
           const character: Character = {
             id: char.ocid,
+            ocid: char.ocid,
             name: basicData.character_name,
             level: basicData.character_level,
             job: basicData.character_class,
@@ -224,6 +225,7 @@ class NexonApiService {
 
       const character: Character = {
         id: ocid,
+        ocid: ocid,
         name: data.character_name,
         level: data.character_level,
         job: data.character_class,

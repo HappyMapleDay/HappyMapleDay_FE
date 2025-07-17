@@ -1,6 +1,7 @@
 // 캐릭터 관련 타입
 export interface Character {
   id: string;
+  ocid: string; // 넥슨 API 호출용
   name: string;
   server: string;
   serverIcon?: string; // 서버 아이콘 URL
