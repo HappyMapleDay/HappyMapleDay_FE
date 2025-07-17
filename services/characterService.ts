@@ -1,36 +1,11 @@
 import { CharacterListResponseDto, CharacterResponse } from '../types/auth';
 import { Character } from '../types';
+import { TokenManager } from './authService';
 
 // API 설정
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// 토큰 관리 유틸리티
-class TokenManager {
-  private static readonly ACCESS_TOKEN_KEY = 'accessToken';
-  private static readonly REFRESH_TOKEN_KEY = 'refreshToken';
 
-  static getAccessToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(this.ACCESS_TOKEN_KEY);
-  }
-
-  static getRefreshToken(): string | null {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(this.REFRESH_TOKEN_KEY);
-  }
-
-  static setTokens(accessToken: string, refreshToken: string): void {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
-    localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
-  }
-
-  static clearTokens(): void {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem(this.ACCESS_TOKEN_KEY);
-    localStorage.removeItem(this.REFRESH_TOKEN_KEY);
-  }
-}
 
 // HTTP 클라이언트 클래스
 class HttpClient {
@@ -114,7 +89,14 @@ class CharacterService {
   async getCharacterList(): Promise<Character[]> {
     try {
       console.log('캐릭터 목록 조회 API 호출 시작');
-      const response = await this.httpClient.get<CharacterListResponseDto>('/api/character');
+      
+      // 저장된 사용자 ID 조회
+      const userId = TokenManager.getAccessToken() ? TokenManager.getUserId() : null;
+      if (!userId) {
+        throw new Error('사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
+      
+      const response = await this.httpClient.get<CharacterListResponseDto>(`/api/character?userId=${userId}`);
       console.log('캐릭터 목록 조회 API 응답:', response);
       
       if (response.status === 'success' && response.data) {

@@ -25,6 +25,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 class TokenManager {
   private static readonly ACCESS_TOKEN_KEY = 'accessToken';
   private static readonly REFRESH_TOKEN_KEY = 'refreshToken';
+  private static readonly USER_ID_KEY = 'userId';
 
   static getAccessToken(): string | null {
     if (typeof window === 'undefined') return null;
@@ -36,16 +37,25 @@ class TokenManager {
     return localStorage.getItem(this.REFRESH_TOKEN_KEY);
   }
 
-  static setTokens(accessToken: string, refreshToken: string): void {
+  static getUserId(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem(this.USER_ID_KEY);
+  }
+
+  static setTokens(accessToken: string, refreshToken: string, userId?: number): void {
     if (typeof window === 'undefined') return;
     localStorage.setItem(this.ACCESS_TOKEN_KEY, accessToken);
     localStorage.setItem(this.REFRESH_TOKEN_KEY, refreshToken);
+    if (userId !== undefined) {
+      localStorage.setItem(this.USER_ID_KEY, userId.toString());
+    }
   }
 
   static clearTokens(): void {
     if (typeof window === 'undefined') return;
     localStorage.removeItem(this.ACCESS_TOKEN_KEY);
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
+    localStorage.removeItem(this.USER_ID_KEY);
   }
 }
 
@@ -199,9 +209,9 @@ class AuthService {
     try {
       const response = await this.httpClient.post<LoginResponseDto>('/api/user/login', request);
       
-      if (response.status === "success" && response.data) {
-        // 토큰 저장
-        TokenManager.setTokens(response.data.token, response.data.refreshToken);
+      if (response.success && response.data) {
+        // 토큰과 사용자 ID 저장
+        TokenManager.setTokens(response.data.token, response.data.refreshToken, response.data.user.id);
       }
       
       return response;

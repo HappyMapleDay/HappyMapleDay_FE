@@ -23,14 +23,16 @@ export interface LoginRequestDto {
 }
 
 export interface LoginResponseDto {
-  status: string; // "success" 또는 "error"
-  message: string;
+  success: boolean;
   data: {
     token: string; // Access Token
     refreshToken: string; // Refresh Token
-    message: string;
-    status: string;
+    user: {
+      id: number;
+      mainCharacterName: string;
+    };
   };
+  message: string | null;
 }
 
 // 토큰 갱신 관련 타입
