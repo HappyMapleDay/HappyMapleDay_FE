@@ -1,6 +1,7 @@
 import { CharacterListResponseDto, CharacterResponse, CharacterBulkCreateRequest, CharacterBulkCreateResponse } from '../types/auth';
 import { Character } from '../types';
 import { TokenManager } from './authService';
+import nexonApiService from './nexonApiService';
 
 // API 설정
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
@@ -137,7 +138,12 @@ class CharacterService {
       console.log('캐릭터 목록 조회 API 응답:', response);
       
       if (response.status === 'success' && response.data) {
-        return response.data.map(char => this.transformCharacterResponse(char));
+        const characters = response.data.map(char => this.transformCharacterResponse(char));
+        
+        // 캐릭터 정보가 부족한 경우 넥슨 API로 보완
+        const enhancedCharacters = await this.enhanceCharacterInfo(characters);
+        
+        return enhancedCharacters;
       } else {
         throw new Error(response.message || '캐릭터 목록 조회에 실패했습니다.');
       }
@@ -145,6 +151,43 @@ class CharacterService {
       console.error('캐릭터 목록 조회 실패:', error);
       throw error;
     }
+  }
+
+  // 캐릭터 정보 보완
+  private async enhanceCharacterInfo(characters: Character[]): Promise<Character[]> {
+    const apiKey = TokenManager.getNexonApiKey();
+    if (!apiKey) {
+      console.log('넥슨 API 키가 없어 캐릭터 정보 보완을 건너뜁니다.');
+      return characters;
+    }
+
+    const enhancedCharacters = await Promise.all(
+      characters.map(async (character) => {
+        // 정보가 부족한 경우만 넥슨 API 호출
+        if (character.server === 'unknown' || character.job === 'unknown' || character.level === 0) {
+          try {
+            console.log(`캐릭터 ${character.name}의 정보를 넥슨 API로 보완합니다.`);
+            const enhancedInfo = await nexonApiService.getCharacterBasic(character.id, apiKey);
+            
+            if (enhancedInfo) {
+              return {
+                ...character,
+                server: enhancedInfo.server,
+                serverIcon: enhancedInfo.serverIcon,
+                job: enhancedInfo.job,
+                level: enhancedInfo.level,
+                image: enhancedInfo.image
+              };
+            }
+          } catch (error) {
+            console.error(`캐릭터 ${character.name} 정보 보완 실패:`, error);
+          }
+        }
+        return character;
+      })
+    );
+
+    return enhancedCharacters;
   }
 
   // 캐릭터 일괄 등록

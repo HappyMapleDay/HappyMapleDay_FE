@@ -57,6 +57,17 @@ class TokenManager {
     localStorage.removeItem(this.REFRESH_TOKEN_KEY);
     localStorage.removeItem(this.USER_ID_KEY);
   }
+
+  // 넥슨 API 키 저장/조회 (임시)
+  static setNexonApiKey(apiKey: string): void {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('nexon_api_key', apiKey);
+  }
+
+  static getNexonApiKey(): string | null {
+    if (typeof window === 'undefined') return null;
+    return localStorage.getItem('nexon_api_key');
+  }
 }
 
 // HTTP 클라이언트 클래스

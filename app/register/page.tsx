@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "../../store/authStore";
 import { Character } from "../../types";
 import nexonApiService from "../../services/nexonApiService";
+import { TokenManager } from "../../services/authService";
 
 export default function Register() {
   const router = useRouter();
@@ -133,6 +134,9 @@ export default function Register() {
       console.log('회원가입 API 결과:', success);
 
       if (success) {
+        // 넥슨 API 키 저장 (캐릭터 정보 보완용)
+        TokenManager.setNexonApiKey(apiKey);
+        
         alert("회원가입이 완료되었습니다!\n로그인 페이지로 이동합니다.");
         router.push('/');
       } else {
