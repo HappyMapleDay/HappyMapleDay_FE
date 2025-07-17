@@ -78,13 +78,41 @@ class CharacterService {
 
   // 백엔드 응답을 프론트엔드 타입으로 변환
   private transformCharacterResponse(response: CharacterResponse): Character {
+    // 서버 아이콘 매핑
+    const getServerIcon = (worldName: string): string => {
+      const serverIcons: { [key: string]: string } = {
+        '스카니아': '/image/server-icons/scania.png',
+        '베라': '/image/server-icons/bera.png',
+        '루나': '/image/server-icons/luna.png',
+        '제니스': '/image/server-icons/zenith.png',
+        '크로아': '/image/server-icons/croa.png',
+        '유니온': '/image/server-icons/union.png',
+        '엘리시움': '/image/server-icons/elysium.png',
+        '이노시스': '/image/server-icons/enosis.png',
+        '레드': '/image/server-icons/red.png',
+        '오로라': '/image/server-icons/aurora.png',
+        '아케인': '/image/server-icons/arcane.png',
+        '노바': '/image/server-icons/nova.png',
+        '리부트': '/image/server-icons/reboot.png',
+        '리부트2': '/image/server-icons/reboot2.png',
+        '헬리오스': '/image/server-icons/helios.png',
+        '이오스': '/image/server-icons/eos.png',
+        '챌린저스1': '/image/server-icons/challengers.png',
+        '챌린저스2': '/image/server-icons/challengers.png',
+        '챌린저스3': '/image/server-icons/challengers.png',
+        '챌린저스4': '/image/server-icons/challengers.png',
+      };
+      return serverIcons[worldName] || '/image/server-icons/default.png';
+    };
+
     return {
       id: response.id.toString(),
       name: response.characterName,
-      server: "unknown", // 서버 정보가 없으므로 임시로 unknown
-      job: "unknown", // 직업 정보가 없으므로 임시로 unknown
-      level: 0, // 레벨 정보가 없으므로 임시로 0
-      image: "/image/logo.png", // 이미지 정보가 없으므로 기본 이미지
+      server: response.worldName || "unknown",
+      serverIcon: response.worldName ? getServerIcon(response.worldName) : undefined,
+      job: response.characterClass || "unknown",
+      level: response.characterLevel || 0,
+      image: response.characterImage || "/image/logo.png",
       isMainCharacter: response.isMain
     };
   }

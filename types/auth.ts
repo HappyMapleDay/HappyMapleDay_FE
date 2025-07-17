@@ -1,4 +1,14 @@
 // 회원가입 관련 타입
+export interface SignupCharacterInfo {
+  characterName: string;
+  ocid: string;
+  worldName: string;
+  characterClass: string;
+  characterLevel: number;
+  characterImage: string;
+  isMain: boolean;
+}
+
 export interface SignupRequestDto {
   nexonApiKey: string;
   mainCharacterName: string;
@@ -6,6 +16,8 @@ export interface SignupRequestDto {
   password: string;
   passwordConfirm: string;
   dataCollectionAgreed: boolean;
+  // 전체 캐릭터 정보 추가
+  characters: SignupCharacterInfo[];
 }
 
 export interface SignupResponseDto {
@@ -154,6 +166,11 @@ export interface CharacterResponse {
   characterName: string;
   isMain: boolean;
   createdAt: string;
+  // 추가 정보
+  worldName?: string;
+  characterClass?: string;
+  characterLevel?: number;
+  characterImage?: string;
 }
 
 export interface CharacterListResponseDto {
@@ -167,6 +184,11 @@ export interface CharacterBulkCreateCharacter {
   characterName: string;
   ocid: string;
   isMain: boolean;
+  // 추가 정보
+  worldName: string;
+  characterClass: string;
+  characterLevel: number;
+  characterImage: string;
 }
 
 export interface CharacterBulkCreateRequest {
@@ -180,6 +202,11 @@ export interface SavedCharacter {
   characterName: string;
   isMain: boolean;
   createdAt: string;
+  // 추가 정보
+  worldName?: string;
+  characterClass?: string;
+  characterLevel?: number;
+  characterImage?: string;
 }
 
 export interface CharacterBulkCreateResponse {
