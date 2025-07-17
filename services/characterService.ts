@@ -137,12 +137,16 @@ class CharacterService {
       
       const response = await this.httpClient.get<CharacterListResponseDto>(`/api/character/${userId}`);
       console.log('캐릭터 목록 조회 API 응답:', response);
+      console.log('응답 데이터 개수:', response.data?.length || 0);
       
       if (response.status === 'success' && response.data) {
+        console.log('백엔드에서 받은 캐릭터 데이터:', response.data);
         const characters = response.data.map(char => this.transformCharacterResponse(char));
+        console.log('변환된 캐릭터 데이터:', characters);
         
         // 캐릭터 정보가 부족한 경우 넥슨 API로 보완
         const enhancedCharacters = await this.enhanceCharacterInfo(characters);
+        console.log('넥슨 API로 보완된 캐릭터 데이터:', enhancedCharacters);
         
         return enhancedCharacters;
       } else {

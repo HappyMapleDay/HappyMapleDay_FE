@@ -170,7 +170,12 @@ export default function Register() {
               
               console.log('캐릭터 등록 데이터:', characterRegisterData);
               const characterResult = await registerCharacters(characterRegisterData);
-              console.log('캐릭터 등록 결과:', characterResult);
+              console.log('캐릭터 등록 결과 (전체):', characterResult);
+              console.log('응답 타입:', typeof characterResult);
+              console.log('successCount:', characterResult.successCount);
+              console.log('totalCount:', characterResult.totalCount);
+              console.log('failureCount:', characterResult.failureCount);
+              console.log('savedCharacters:', characterResult.savedCharacters);
               
               // 캐릭터 등록 완료 후 로그아웃
               TokenManager.clearTokens();
@@ -178,7 +183,7 @@ export default function Register() {
               if (characterResult.successCount > 0) {
                 alert(`회원가입이 완료되었습니다!\n${characterResult.successCount}명의 캐릭터가 등록되었습니다.\n로그인 페이지로 이동합니다.`);
               } else {
-                alert("회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n로그인 후 설정에서 캐릭터를 등록해주세요.");
+                alert(`회원가입은 완료되었으나 캐릭터 등록에 실패했습니다.\n[디버그 정보]\nsuccessCount: ${characterResult.successCount}\ntotalCount: ${characterResult.totalCount}\nfailureCount: ${characterResult.failureCount}\n로그인 후 설정에서 캐릭터를 등록해주세요.`);
               }
             } else {
               console.error('사용자 ID를 가져올 수 없음');
