@@ -209,7 +209,14 @@ class AuthService {
     try {
       const response = await this.httpClient.post<LoginResponseDto>('/api/user/login', request);
       
-      if (response.success && response.data) {
+      console.log('로그인 응답 전체:', response);
+      console.log('로그인 응답 데이터:', response.data);
+      
+      // 다양한 응답 형태 처리
+      const isSuccess = response.success || ('status' in response && (response as {status: string}).status === "success");
+      
+      if (isSuccess && response.data) {
+        console.log('사용자 ID:', response.data.user.id);
         // 토큰과 사용자 ID 저장
         TokenManager.setTokens(response.data.token, response.data.refreshToken, response.data.user.id);
       }

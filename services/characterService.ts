@@ -91,7 +91,12 @@ class CharacterService {
       console.log('캐릭터 목록 조회 API 호출 시작');
       
       // 저장된 사용자 ID 조회
-      const userId = TokenManager.getAccessToken() ? TokenManager.getUserId() : null;
+      const accessToken = TokenManager.getAccessToken();
+      const userId = TokenManager.getUserId();
+      
+      console.log('액세스 토큰:', accessToken ? '존재함' : '없음');
+      console.log('사용자 ID:', userId);
+      
       if (!userId) {
         throw new Error('사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
       }
