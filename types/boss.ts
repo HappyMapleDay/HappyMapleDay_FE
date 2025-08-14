@@ -80,6 +80,7 @@ export interface DesireItemResponse {
   bossId: number;
   bossName: string;
   bossDifficulty: string;
+  bossDifficultyEn?: string;
   randomBoxItems: RandomBoxItemResponse[];
 }
 
@@ -87,7 +88,6 @@ export interface BossResponse {
   id: number;
   bossName: string;
   bossNameEn?: string; // 예: blackmage
-  englishName?: string; // 과거 호환용
   difficulty: string; // 예: 익스트림
   difficultyEn?: string; // 예: extreme
   crystalPrice: number;

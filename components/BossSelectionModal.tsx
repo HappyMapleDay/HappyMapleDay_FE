@@ -28,11 +28,12 @@ export default function BossSelectionModal({
   const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
   const [difficultyIndexByBossId, setDifficultyIndexByBossId] = useState<Record<string, number>>({});
   const [apiBosses, setApiBosses] = useState<BossResponse[]>([]);
-  const [desireDropMap, setDesireDropMap] = useState<Record<string, string[]>>({});
+  // 보스별 난이도 키 -> 드랍아이템EN 배열
+  const [desireDropMap, setDesireDropMap] = useState<Record<string, Record<string, string[]>>>({});
   // API 전체 보스 리스트는 UI Boss로 변환해서 사용
 
   // API 보스를 UI 보스로 변환
-  const transformApiBossesToUi = useCallback((apiList: BossResponse[]): Boss[] => {
+  const transformApiBossesToUi = useCallback((apiList: (BossResponse & { englishName?: string })[]): Boss[] => {
     const group = new Map<string, Boss>();
     for (const item of apiList) {
       const en = item.bossNameEn || item.englishName || '';
@@ -87,23 +88,28 @@ export default function BossSelectionModal({
     }
   }, [transformApiBossesToUi]);
 
-  // 보스별 물욕템(주요드랍) 조회
+  // 보스별 물욕템(주요드랍) 조회 - 전체 난이도 캐시 후 렌더 시 선택 난이도로 필터
   useEffect(() => {
     if (!isOpen || apiBosses.length === 0 || allBosses.length === 0) return;
     const fetchDrops = async () => {
-      const updates: Record<string, string[]> = {};
+      const updates: Record<string, Record<string, string[]>> = {};
       const tasks = allBosses.map(async (uiBoss) => {
-        if (desireDropMap[uiBoss.id]) return; // already cached
         const api = apiBosses.find((b: BossResponse & { englishName?: string }) => (b.bossNameEn || b.englishName) === uiBoss.id || b.bossName === uiBoss.name);
         if (!api) return;
         try {
           const bossNumericId = (api as unknown as { id?: number; bossId?: number }).id ?? (api as unknown as { id?: number; bossId?: number }).bossId;
           if (bossNumericId == null) return;
           const items = await getBossDesireItems(bossNumericId);
-          const names = items.map((d: { itemNameEn?: string; itemName: string }) => (d.itemNameEn || d.itemName)).slice(0, 3);
-          updates[uiBoss.id] = names;
+          const normalize = (v?: string) => (v || '').toLowerCase();
+          items.forEach((d: { bossDifficultyEn?: string; bossDifficulty?: string; itemNameEn?: string; itemName: string }) => {
+            const key = normalize(d.bossDifficultyEn || d.bossDifficulty) || 'all';
+            if (!updates[uiBoss.id]) updates[uiBoss.id] = {};
+            if (!updates[uiBoss.id][key]) updates[uiBoss.id][key] = [];
+            const nm = d.itemNameEn || d.itemName;
+            if (nm) updates[uiBoss.id][key].push(nm);
+          });
         } catch {
-          // 무시하고 다음 보스 진행
+          // ignore
         }
       });
       await Promise.all(tasks);
@@ -112,7 +118,6 @@ export default function BossSelectionModal({
       }
     };
     fetchDrops();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, apiBosses, allBosses]);
 
   useEffect(() => {
@@ -137,11 +142,11 @@ export default function BossSelectionModal({
     return `/image/boss-illustrate/${fileKey}-illustrate.png`;
   };
 
-  const getCurrentDifficultyIndex = (bossId: string, difficultiesLength: number) => {
+  const getCurrentDifficultyIndex = useCallback((bossId: string, difficultiesLength: number) => {
     const idx = difficultyIndexByBossId[bossId];
     // 기본값: 최상 난이도(마지막 인덱스)
     return typeof idx === 'number' ? idx : Math.max(0, difficultiesLength - 1);
-  };
+  }, [difficultyIndexByBossId]);
 
   const changeDifficulty = (bossId: string, direction: 'prev' | 'next', total: number) => {
     setDifficultyIndexByBossId(prev => {
@@ -315,10 +320,12 @@ export default function BossSelectionModal({
                           <Image src={imageSrc} alt={boss.name} width={92} height={92} className="w-[92px] h-[92px] rounded-lg object-cover flex-shrink-0" />
                         </div>
                         <div className="mt-2 grid grid-cols-3 gap-1 w-full">
-                          {(desireDropMap[boss.id] && desireDropMap[boss.id].length > 0
-                            ? desireDropMap[boss.id].slice(0, 3)
-                            : currentDifficulty.expectedItems.slice(0, 3)
-                          ).map((name, idx) => (
+                          {(() => {
+                            const currentIdx = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
+                            const difKey = boss.difficulties[currentIdx].difficulty.toLowerCase();
+                            const pool = desireDropMap[boss.id]?.[difKey] || desireDropMap[boss.id]?.all || [];
+                            const list = (pool.length > 0 ? pool : currentDifficulty.expectedItems).slice(0, 3);
+                            return list.map((name, idx) => (
                             <Image
                               key={idx}
                               src={`/image/drop-item/${name}.png`}
@@ -327,7 +334,8 @@ export default function BossSelectionModal({
                               height={28}
                               className="w-7 h-7 rounded object-contain bg-white"
                             />
-                          ))}
+                            ));
+                          })()}
                         </div>
                       </div>
 
