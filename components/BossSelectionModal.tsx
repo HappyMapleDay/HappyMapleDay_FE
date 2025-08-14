@@ -100,7 +100,7 @@ export default function BossSelectionModal({
           const bossNumericId = (api as unknown as { id?: number; bossId?: number }).id ?? (api as unknown as { id?: number; bossId?: number }).bossId;
           if (bossNumericId == null) return;
           const items = await getBossDesireItems(bossNumericId);
-          const names = items.map((d) => d.itemName).slice(0, 3);
+          const names = items.map((d: { itemNameEn?: string; itemName: string }) => (d.itemNameEn || d.itemName)).slice(0, 3);
           updates[uiBoss.id] = names;
         } catch {
           // 무시하고 다음 보스 진행
@@ -309,15 +309,25 @@ export default function BossSelectionModal({
                     }`}
                   >
                     <div className="flex items-start gap-4">
-                      {/* Illustration + Drops (left column) */}
-                      <div className="flex flex-col items-start">
-                        <Image src={imageSrc} alt={boss.name} width={92} height={92} className="w-[92px] h-[92px] rounded-lg object-cover flex-shrink-0" />
-                        <div className="mt-2 text-xs text-gray-600 w-[180px] truncate">
-                          <span className="whitespace-nowrap">
-                            주요 드랍: {(desireDropMap[boss.id] && desireDropMap[boss.id].length > 0)
-                              ? desireDropMap[boss.id].slice(0, 3).join(', ')
-                              : currentDifficulty.expectedItems.slice(0, 3).join(', ')}
-                          </span>
+                      {/* Left column: Drops thumbnails */}
+                      <div className="flex flex-col items-start w-[92px]">
+                        <div className="flex gap-1">
+                          <Image src={imageSrc} alt={boss.name} width={92} height={92} className="w-[92px] h-[92px] rounded-lg object-cover flex-shrink-0" />
+                        </div>
+                        <div className="mt-2 grid grid-cols-3 gap-1 w-full">
+                          {(desireDropMap[boss.id] && desireDropMap[boss.id].length > 0
+                            ? desireDropMap[boss.id].slice(0, 3)
+                            : currentDifficulty.expectedItems.slice(0, 3)
+                          ).map((name, idx) => (
+                            <Image
+                              key={idx}
+                              src={`/image/drop-item/${name}.png`}
+                              alt={name}
+                              width={28}
+                              height={28}
+                              className="w-7 h-7 rounded object-contain bg-white"
+                            />
+                          ))}
                         </div>
                       </div>
 

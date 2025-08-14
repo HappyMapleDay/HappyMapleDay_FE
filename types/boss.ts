@@ -65,6 +65,7 @@ export type ForceType = 'ARCANE' | 'AUTHENTIC';
 export interface RandomBoxItemResponse {
   id: number;
   dropItemName: string;
+  dropItemNameEn?: string;
   dropItemLevel: number;
   fullDropItemName: string;
   hasDropLevel: boolean;
@@ -73,6 +74,7 @@ export interface RandomBoxItemResponse {
 export interface DesireItemResponse {
   id: number;
   itemName: string;
+  itemNameEn?: string;
   isRandomBox: boolean;
   fullItemName: string;
   bossId: number;
