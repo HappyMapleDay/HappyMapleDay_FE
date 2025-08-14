@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import Image from "next/image";
 import { Boss, Character } from "../types";
-import { bossService } from "../services/bossService";
+import { getBossPresetList, getBossListFromAPI, getBossDesireItems } from "../services/bossService";
+import { BossPresetResponse, BossResponse } from "../types/boss";
 
 interface BossSelectionModalProps {
   isOpen: boolean;
@@ -22,28 +24,195 @@ export default function BossSelectionModal({
   const [localSelectedBosses, setLocalSelectedBosses] = useState<string[]>(selectedBosses);
   const [allBosses, setAllBosses] = useState<Boss[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [presets, setPresets] = useState<BossPresetResponse[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<number | null>(null);
+  const [difficultyIndexByBossId, setDifficultyIndexByBossId] = useState<Record<string, number>>({});
+  const [apiBosses, setApiBosses] = useState<BossResponse[]>([]);
+  const [desireDropMap, setDesireDropMap] = useState<Record<string, string[]>>({});
+  // API 전체 보스 리스트는 UI Boss로 변환해서 사용
 
-  useEffect(() => {
-    if (isOpen) {
-      loadBosses();
+  // API 보스를 UI 보스로 변환
+  const transformApiBossesToUi = useCallback((apiList: BossResponse[]): Boss[] => {
+    const group = new Map<string, Boss>();
+    for (const item of apiList) {
+      const en = item.bossNameEn || item.englishName || '';
+      const id = en || item.id.toString();
+      const difficulty = mapDifficulty(item.difficultyEn || item.difficulty);
+      const existing = group.get(id);
+      const difficultyInfo: Boss['difficulties'][number] = {
+        difficulty,
+        requiredLevel: (item as BossResponse).minEntryLevel ?? 0,
+        expectedMeso: item.crystalPrice || 0,
+        expectedItems: [] as string[],
+      };
+
+      if (existing) {
+        existing.difficulties.push(difficultyInfo);
+      } else {
+        group.set(id, {
+          id,
+          name: item.bossName,
+          resetType: 'weekly',
+          image: englishToImage(en),
+          difficulties: [difficultyInfo],
+        });
+      }
     }
-  }, [isOpen]);
+    // 난이도 정렬: easy → normal → hard → chaos → extreme
+    const order: Record<'easy' | 'normal' | 'hard' | 'chaos' | 'extreme', number> = {
+      easy: 0,
+      normal: 1,
+      hard: 2,
+      chaos: 3,
+      extreme: 4,
+    };
+    for (const boss of group.values()) {
+      boss.difficulties.sort((a, b) => order[a.difficulty] - order[b.difficulty]);
+    }
+    return Array.from(group.values());
+  }, []);
 
-  const loadBosses = async () => {
+  const loadModalData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const bosses = await bossService.getRecommendedBosses(character.level);
-      setAllBosses(bosses);
+      const presetList = await getBossPresetList();
+      setPresets(presetList);
+      const apiList = await getBossListFromAPI();
+      setApiBosses(apiList);
+      setAllBosses(transformApiBossesToUi(apiList));
     } catch (error) {
       console.error('보스 목록을 불러오는데 실패했습니다:', error);
     } finally {
       setIsLoading(false);
     }
+  }, [transformApiBossesToUi]);
+
+  // 보스별 물욕템(주요드랍) 조회
+  useEffect(() => {
+    if (!isOpen || apiBosses.length === 0 || allBosses.length === 0) return;
+    const fetchDrops = async () => {
+      const updates: Record<string, string[]> = {};
+      const tasks = allBosses.map(async (uiBoss) => {
+        if (desireDropMap[uiBoss.id]) return; // already cached
+        const api = apiBosses.find((b: BossResponse & { englishName?: string }) => (b.bossNameEn || b.englishName) === uiBoss.id || b.bossName === uiBoss.name);
+        if (!api) return;
+        try {
+          const bossNumericId = (api as unknown as { id?: number; bossId?: number }).id ?? (api as unknown as { id?: number; bossId?: number }).bossId;
+          if (bossNumericId == null) return;
+          const items = await getBossDesireItems(bossNumericId);
+          const names = items.map((d) => d.itemName).slice(0, 3);
+          updates[uiBoss.id] = names;
+        } catch {
+          // 무시하고 다음 보스 진행
+        }
+      });
+      await Promise.all(tasks);
+      if (Object.keys(updates).length > 0) {
+        setDesireDropMap((prev) => ({ ...prev, ...updates }));
+      }
+    };
+    fetchDrops();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, apiBosses, allBosses]);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadModalData();
+    }
+  }, [isOpen, loadModalData]);
+
+  const englishToImage = (englishName?: string) => {
+    if (!englishName) return '/image/logo.png';
+    // 일부 명칭 표준화 및 예외 매핑
+    const overrides: Record<string, string> = {
+      // 파일명과 영문명이 다른 경우 보정
+      vervushilla: 'vernushilla',
+    };
+
+    const normalized = englishName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, ''); // 공백/특수문자 제거
+
+    const fileKey = overrides[normalized] || normalized;
+    return `/image/boss-illustrate/${fileKey}-illustrate.png`;
+  };
+
+  const getCurrentDifficultyIndex = (bossId: string, difficultiesLength: number) => {
+    const idx = difficultyIndexByBossId[bossId];
+    // 기본값: 최상 난이도(마지막 인덱스)
+    return typeof idx === 'number' ? idx : Math.max(0, difficultiesLength - 1);
+  };
+
+  const changeDifficulty = (bossId: string, direction: 'prev' | 'next', total: number) => {
+    setDifficultyIndexByBossId(prev => {
+      const current = getCurrentDifficultyIndex(bossId, total);
+      let nextIndex = current;
+      if (direction === 'prev') {
+        nextIndex = current > 0 ? current - 1 : total - 1;
+      } else {
+        nextIndex = current < total - 1 ? current + 1 : 0;
+      }
+      return { ...prev, [bossId]: nextIndex };
+    });
+  };
+
+  const mapDifficulty = (koOrEn?: string): 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme' => {
+    const v = (koOrEn || '').toLowerCase();
+    if (v === 'easy' || v === '이지') return 'easy';
+    if (v === 'normal' || v === '노말') return 'normal';
+    if (v === 'hard' || v === '하드') return 'hard';
+    if (v === 'chaos' || v === '카오스') return 'chaos';
+    if (v === 'extreme' || v === '익스트림') return 'extreme';
+    return 'normal';
+  };
+
+  // 중복 선언 제거
+  /* const transformApiBossesToUi = (apiList: BossResponse[]): Boss[] => {
+    const group = new Map<string, Boss>();
+    for (const item of apiList) {
+      const en = item.bossNameEn || item.englishName || '';
+      const id = en || item.id.toString();
+      const difficulty = mapDifficulty(item.difficultyEn || item.difficulty);
+      const existing = group.get(id);
+      const difficultyInfo: Boss['difficulties'][number] = {
+        difficulty,
+        requiredLevel: (item as BossResponse).minEntryLevel ?? 0,
+        expectedMeso: item.crystalPrice || 0,
+        expectedItems: [] as string[],
+      };
+
+      if (existing) {
+        existing.difficulties.push(difficultyInfo);
+      } else {
+        group.set(id, {
+          id,
+          name: item.bossName,
+          resetType: 'weekly',
+          image: englishToImage(en),
+          difficulties: [difficultyInfo],
+        });
+      }
+    }
+    return Array.from(group.values());
+  }; */
+
+  const handleSelectPreset = (presetId: number) => {
+    setSelectedPresetId(presetId);
+    // 프리셋의 보스 EN 이름으로 로컬 보스 ID 매칭
+    const preset = presets.find(p => p.id === presetId);
+    if (!preset) return;
+
+    const toSelect: string[] = (preset.bosses?.length ? preset.bosses.map(b => (b.bossNameEn || b.englishName)) : [])
+      .filter((v): v is string => !!v);
+
+    if (toSelect.length > 0) {
+      setLocalSelectedBosses(Array.from(new Set([...localSelectedBosses, ...toSelect])));
+    }
   };
 
   if (!isOpen) return null;
 
-  // 주간보스만 표시
+  // 주간보스만 표시 (API는 주간이므로 그대로 사용)
   const weeklyBosses = allBosses.filter(boss => boss.resetType === 'weekly');
 
   const handleBossToggle = (bossId: string) => {
@@ -59,25 +228,20 @@ export default function BossSelectionModal({
     onClose();
   };
 
-  const getDifficultyColor = (difficulty: 'normal' | 'hard' | 'chaos' | 'extreme') => {
-    switch (difficulty) {
-      case 'normal': return 'bg-green-100 text-green-700';
-      case 'hard': return 'bg-yellow-100 text-yellow-700';
-      case 'chaos': return 'bg-red-100 text-red-700';
-      case 'extreme': return 'bg-purple-100 text-purple-700';
-      default: return 'bg-gray-100 text-gray-700';
-    }
-  };
+  // 난이도 표기는 이미지로만 표시하므로 색상 클래스는 제거
 
-  const formatMeso = (amount: number) => {
-    if (amount >= 1000000000) {
-      return `${(amount / 1000000000).toFixed(1)}억`;
-    } else if (amount >= 10000000) {
-      return `${(amount / 10000000).toFixed(0)}천만`;
-    } else if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(0)}백만`;
+  // 페이지와 동일한 표기 규칙으로 통일 (x억 y만 메소)
+  const formatMeso = (meso: number) => {
+    const manMeso = Math.floor(meso / 10000);
+    if (manMeso >= 10000) {
+      const eok = Math.floor(manMeso / 10000);
+      const remainingMan = manMeso % 10000;
+      if (remainingMan === 0) {
+        return `${eok}억 메소`;
+      }
+      return `${eok}억 ${remainingMan}만 메소`;
     }
-    return amount.toLocaleString();
+    return `${manMeso}만 메소`;
   };
 
   return (
@@ -101,8 +265,20 @@ export default function BossSelectionModal({
               </svg>
             </button>
           </div>
-
-
+          {/* 프리셋 탭 */}
+          <div className="flex items-center gap-2 mt-4 overflow-x-auto">
+            {presets.map((preset, idx) => (
+              <button
+                key={`${preset.id}-${preset.presetName}-${idx}`}
+                onClick={() => handleSelectPreset(preset.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                  selectedPresetId === preset.id ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {preset.presetName}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Content */}
@@ -115,59 +291,95 @@ export default function BossSelectionModal({
           ) : weeklyBosses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {weeklyBosses.map((boss) => {
-                // 첫 번째 난이도를 기본으로 표시
-                const firstDifficulty = boss.difficulties[0];
-                const minRequiredLevel = Math.min(...boss.difficulties.map(d => d.requiredLevel));
+                const currentIndex = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
+                const currentDifficulty = boss.difficulties[currentIndex];
+                const minRequiredLevel = currentDifficulty.requiredLevel;
+                const imageSrc = boss.image || '/image/logo.png';
+                const difficultyKey = currentDifficulty.difficulty;
+                const hasMultipleDifficulties = boss.difficulties.length > 1;
                 
                 return (
                   <div
                     key={boss.id}
                     onClick={() => handleBossToggle(boss.id)}
-                    className={`p-4 border rounded-lg cursor-pointer transition-all ${
+                    className={`relative p-4 border rounded-lg cursor-pointer transition-all ${
                       localSelectedBosses.includes(boss.id)
                         ? 'border-orange-500 bg-orange-50'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-medium text-gray-900">{boss.name}</h3>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${getDifficultyColor(firstDifficulty.difficulty)}`}>
-                            {firstDifficulty.difficulty}
+                    <div className="flex items-start gap-4">
+                      {/* Illustration + Drops (left column) */}
+                      <div className="flex flex-col items-start">
+                        <Image src={imageSrc} alt={boss.name} width={92} height={92} className="w-[92px] h-[92px] rounded-lg object-cover flex-shrink-0" />
+                        <div className="mt-2 text-xs text-gray-600 w-[180px] truncate">
+                          <span className="whitespace-nowrap">
+                            주요 드랍: {(desireDropMap[boss.id] && desireDropMap[boss.id].length > 0)
+                              ? desireDropMap[boss.id].slice(0, 3).join(', ')
+                              : currentDifficulty.expectedItems.slice(0, 3).join(', ')}
                           </span>
-                          {boss.difficulties.length > 1 && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs">
-                              +{boss.difficulties.length - 1}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="space-y-1 text-sm text-gray-600">
-                          <div>필요 레벨: {minRequiredLevel}</div>
-                          <div className="font-medium text-orange-600">
-                            예상 메소: {formatMeso(firstDifficulty.expectedMeso)}
-                          </div>
-                          <div className="text-xs">
-                            주요 드랍: {firstDifficulty.expectedItems.slice(0, 2).join(', ')}
-                            {firstDifficulty.expectedItems.length > 2 && ' 외'}
-                          </div>
                         </div>
                       </div>
 
-                    {/* Checkbox */}
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                      localSelectedBosses.includes(boss.id)
-                        ? 'border-orange-500 bg-orange-500'
-                        : 'border-gray-300'
-                    }`}>
-                      {localSelectedBosses.includes(boss.id) && (
-                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
+                      {/* Right side: name, difficulty (under name), entry level, meso */}
+                      <div className="flex-1">
+                        {/* Name (single line) */}
+                        <div className="mb-2">
+                          <h3 className="font-semibold text-gray-900 text-base truncate">{boss.name}</h3>
+                        </div>
+                        {/* Difficulty controls under name */}
+                        <div className="flex items-center gap-2 mb-2">
+                          {hasMultipleDifficulties && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); changeDifficulty(boss.id, 'prev', boss.difficulties.length); }}
+                              className="w-6 h-6 rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 flex items-center justify-center"
+                              aria-label="이전 난이도"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                              </svg>
+                            </button>
+                          )}
+                          <Image
+                            src={`/image/boss-difficulty/difficulty-${difficultyKey}.png`}
+                            alt={difficultyKey}
+                            width={90}
+                            height={28}
+                            className="object-contain"
+                          />
+                          {hasMultipleDifficulties && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); changeDifficulty(boss.id, 'next', boss.difficulties.length); }}
+                              className="w-6 h-6 rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 flex items-center justify-center"
+                              aria-label="다음 난이도"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Entry requirement and meso */}
+                        <div className="space-y-1 text-sm text-gray-600">
+                          <div>입장요구레벨: {minRequiredLevel}</div>
+                          <div className="font-medium text-orange-600">예상 메소: {formatMeso(currentDifficulty.expectedMeso)}</div>
+                        </div>
+                      </div>
+
+                      {/* Checkbox (original position at right side) */}
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                        localSelectedBosses.includes(boss.id)
+                          ? 'border-orange-500 bg-orange-500'
+                          : 'border-gray-300'
+                      }`}>
+                        {localSelectedBosses.includes(boss.id) && (
+                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </div>
                     </div>
-                  </div>
                 </div>
                 );
               })}

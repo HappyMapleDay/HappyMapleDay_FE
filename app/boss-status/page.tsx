@@ -12,6 +12,9 @@ import { mockBosses } from "../../data/mockBosses";
 import { mockAllCharacters } from "../../data/mockCharacters";
 import { useAuth } from "../../store/authStore";
 import { getCharacterList } from "../../services/characterService";
+// import { getBossListFromAPI } from "../../services/bossService";
+// import type { BossResponse } from "../../types/boss";
+// 프리셋 로직은 모달 내부에서 처리
 
 export default function BossStatusPage() {
   const router = useRouter();
@@ -27,6 +30,8 @@ export default function BossStatusPage() {
       router.push('/');
     }
   }, [isLoggedIn, router]);
+
+  // 프리셋은 모달에서만 로드
 
   // 캐릭터 목록 조회
   useEffect(() => {
@@ -64,6 +69,8 @@ export default function BossStatusPage() {
     fetchCharacters();
   }, [isLoggedIn]);
 
+  // API 전체 보스 리스트 로드는 모달에서 처리
+
   // 현재 보돌캐로 선택된 캐릭터들
   const [bossCharacters, setBossCharacters] = useState<Character[]>([]);
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
@@ -75,6 +82,8 @@ export default function BossStatusPage() {
   const [isBossModalOpen, setIsBossModalOpen] = useState(false);
   const [isAddCharacterModalOpen, setIsAddCharacterModalOpen] = useState(false);
   const [characterBossSelections, setCharacterBossSelections] = useState<Record<string, BossSelection[]>>({});
+  // 프리셋은 모달에서만 사용
+  // const [apiBosses, setApiBosses] = useState<BossResponse[]>([]);
 
   const selectedCharacter = bossCharacters.find((char: Character) => char.id === selectedCharacterId);
   const selectedBossSelections = selectedCharacterId ? characterBossSelections[selectedCharacterId] || [] : [];
@@ -182,6 +191,8 @@ export default function BossStatusPage() {
     }));
   };
 
+  // 프리셋 관련 로직 제거 (모달에서 처리)
+
   // 캐릭터 추가 함수
   const handleAddCharacters = (characterIds: string[]) => {
     const charactersToAdd = mockAllCharacters.filter(char => characterIds.includes(char.id));
@@ -219,6 +230,8 @@ export default function BossStatusPage() {
       return `${manMeso}만 메소`;
     }
   };
+
+  // 결정석 표기/합계는 모달에서 선택한 mock 데이터 기준 그대로 사용 (API 표기는 모달에서 처리)
 
 
 
@@ -428,27 +441,7 @@ export default function BossStatusPage() {
                 </div>
               </div>
 
-              {/* 탭 메뉴 */}
-              <div className="flex items-center gap-2 mb-6">
-                <button className="px-4 py-2 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium">
-                  스데미
-                </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
-                  이루윌
-                </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
-                  노듄더
-                </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
-                  하스데
-                </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
-                  검밑솔
-                </button>
-                <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium">
-                  하세이칼
-                </button>
-              </div>
+              {/* 프리셋 탭 제거: 프리셋은 모달 내부에서만 노출 */}
 
               <div className="h-[calc(100vh-400px)] overflow-y-auto">
                 {selectedCharacterId ? (
@@ -491,9 +484,11 @@ export default function BossStatusPage() {
                                       &lt;
                                     </button>
                                     <div className="flex items-center justify-center w-[90px] h-[24px]">
-                                      <img
+                                      <Image
                                         src={`/image/boss-difficulty/difficulty-${selection.selectedDifficulty}.png`}
                                         alt={selection.selectedDifficulty}
+                                        width={90}
+                                        height={24}
                                         className="h-6 object-contain"
                                         style={{ 
                                           imageRendering: 'auto',
@@ -510,11 +505,11 @@ export default function BossStatusPage() {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3 ml-auto mr-2">
-                                                                      <span className="text-base font-medium text-orange-500">가격</span>
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-sm text-gray-600">결정석</span>
-                                      <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso / selection.partySize)}</span>
-                                    </div>
+                                  <span className="text-base font-medium text-orange-500">가격</span>
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-sm text-gray-600">결정석</span>
+                                    <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso)}</span>
+                                  </div>
                                 </div>
                               </div>
 
@@ -554,7 +549,7 @@ export default function BossStatusPage() {
                                 </div>
                                                                                                   <div className="flex items-center gap-1 ml-auto mr-2">
                                   <span className="text-sm text-gray-600">물욕템</span>
-                                  <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso / selection.partySize * 1.2)}</span>
+                                  <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso * 1.2)}</span>
                                 </div>
                               </div>
                             </div>

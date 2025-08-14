@@ -1,9 +1,10 @@
 import { Boss } from '../types';
+import type { BossResponse, BossPresetResponse, DesireItemResponse, ApiResponse } from '../types/boss';
 import { mockBosses, getRecommendedBosses } from '../data/mockBosses';
 
 // API 설정
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
-const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK === 'true' || true; // 백엔드 준비 전까지 true
+const USE_MOCK_DATA = process.env.NEXT_PUBLIC_USE_MOCK === 'true';
 
 // 백엔드 API 응답 타입 (실제 API 구조에 맞게 수정 예정)
 interface ApiBossResponse {
@@ -21,17 +22,23 @@ const transformApiResponse = (apiData: ApiBossResponse[]): Boss[] => {
   return apiData.map((apiItem) => ({
     id: apiItem.boss_id,
     name: apiItem.boss_name,
-    difficulty: mapDifficulty(apiItem.difficulty_level),
-    requiredLevel: apiItem.level_requirement,
     resetType: apiItem.reset_cycle === 'daily' ? 'daily' : 'weekly',
-    expectedMeso: apiItem.expected_meso,
-    expectedItems: apiItem.drop_items || []
+    difficulties: [
+      {
+        difficulty: mapDifficulty(apiItem.difficulty_level),
+        requiredLevel: apiItem.level_requirement,
+        expectedMeso: apiItem.expected_meso,
+        expectedItems: apiItem.drop_items || []
+      }
+    ]
   }));
 };
 
 // 난이도 매핑 함수
-const mapDifficulty = (apiDifficulty: string): Boss['difficulty'] => {
+const mapDifficulty = (apiDifficulty: string): Boss['difficulties'][number]['difficulty'] => {
   switch (apiDifficulty.toLowerCase()) {
+    case 'easy':
+    case '이지': return 'easy';
     case 'normal':
     case '노말': return 'normal';
     case 'hard':
@@ -85,32 +92,10 @@ class BossService {
 
   // 캐릭터 레벨별 추천 보스 조회
   async getRecommendedBosses(characterLevel: number): Promise<Boss[]> {
-    if (USE_MOCK_DATA) {
-      return new Promise((resolve) => {
-        setTimeout(() => resolve(getRecommendedBosses(characterLevel)), 300);
-      });
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/bosses/recommended?level=${characterLevel}`);
-      if (!response.ok) {
-        throw new Error('추천 보스 목록을 불러오는데 실패했습니다.');
-      }
-      
-      const apiData = await response.json();
-      
-      // API 응답 변환
-      if (Array.isArray(apiData)) {
-        return transformApiResponse(apiData);
-      } else if (apiData.data) {
-        return transformApiResponse(apiData.data);
-      }
-      
-      return getRecommendedBosses(characterLevel); // fallback
-    } catch (error) {
-      console.error('API Error:', error);
-      return getRecommendedBosses(characterLevel);
-    }
+    // 백엔드에 해당 엔드포인트가 없으므로, 일단 Mock 로직을 사용
+    return new Promise((resolve) => {
+      setTimeout(() => resolve(getRecommendedBosses(characterLevel)), 300);
+    });
   }
 
   // 보스별 상세 정보 조회
@@ -154,9 +139,181 @@ class BossService {
   }
 
   // 난이도별 보스 목록 조회
-  async getBossesByDifficulty(difficulty: Boss['difficulty']): Promise<Boss[]> {
+  async getBossesByDifficulty(difficulty: Boss['difficulties'][number]['difficulty']): Promise<Boss[]> {
     const allBosses = await this.getAllBosses();
-    return allBosses.filter(boss => boss.difficulty === difficulty);
+    return allBosses.filter(boss => boss.difficulties.some(d => d.difficulty === difficulty));
+  }
+
+  // 백엔드 API: 전체 보스 리스트 조회
+  async getBossListFromAPI(): Promise<BossResponse[]> {
+    if (USE_MOCK_DATA) {
+      // Mock 데이터 사용 (임시)
+      return new Promise((resolve) => {
+        setTimeout(() => resolve([]), 500);
+      });
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/boss/list`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('보스 리스트를 불러오는데 실패했습니다.');
+      }
+      
+      const apiData: ApiResponse<BossResponse[]> = await response.json();
+      
+      if (apiData.status === 'success' && apiData.data) {
+        return apiData.data;
+      } else {
+        throw new Error(apiData.message || '보스 리스트 조회 실패');
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  }
+
+  // 백엔드 API: 보스 프리셋 목록 조회
+  async getBossPresetList(): Promise<BossPresetResponse[]> {
+    if (USE_MOCK_DATA) {
+      // Mock 데이터 사용 (임시)
+      return new Promise((resolve) => {
+        const mockPresets: BossPresetResponse[] = [
+          {
+            id: 1,
+            presetName: '스데미',
+            bosses: [
+              { id: 1, bossName: '힐라', englishName: 'hilla', difficulty: '노말', crystalPrice: 150000000, fullName: '힐라 (노말)' },
+              { id: 2, bossName: '시그너스', englishName: 'cygnus', difficulty: '노말', crystalPrice: 300000000, fullName: '시그너스 (노말)' },
+              { id: 3, bossName: '파풀라투스', englishName: 'papulatus', difficulty: '노말', crystalPrice: 400000000, fullName: '파풀라투스 (노말)' }
+            ],
+            bossIds: [1, 2, 3],
+            createdAt: '2025-01-01T00:00:00.000Z',
+            bossCount: 3
+          },
+          {
+            id: 2,
+            presetName: '이루윌',
+            bosses: [
+              { id: 6, bossName: '루시드', englishName: 'lucid', difficulty: '노말', crystalPrice: 1500000000, fullName: '루시드 (노말)' },
+              { id: 7, bossName: '윌', englishName: 'will', difficulty: '노말', crystalPrice: 2000000000, fullName: '윌 (노말)' }
+            ],
+            bossIds: [6, 7],
+            createdAt: '2025-01-01T00:00:00.000Z',
+            bossCount: 2
+          },
+          {
+            id: 3,
+            presetName: '노듄더',
+            bosses: [
+              { id: 8, bossName: '더스크', englishName: 'dusk', difficulty: '노말', crystalPrice: 2000000000, fullName: '더스크 (노말)' },
+              { id: 9, bossName: '다크널', englishName: 'darknell', difficulty: '노말', crystalPrice: 2500000000, fullName: '다크널 (노말)' }
+            ],
+            bossIds: [8, 9],
+            createdAt: '2025-01-01T00:00:00.000Z',
+            bossCount: 2
+          },
+          {
+            id: 4,
+            presetName: '하스데',
+            bosses: [
+              { id: 4, bossName: '로터스', englishName: 'lotus', difficulty: '하드', crystalPrice: 2000000000, fullName: '로터스 (하드)' },
+              { id: 5, bossName: '데미안', englishName: 'damien', difficulty: '하드', crystalPrice: 2000000000, fullName: '데미안 (하드)' }
+            ],
+            bossIds: [4, 5],
+            createdAt: '2025-01-01T00:00:00.000Z',
+            bossCount: 2
+          },
+          {
+            id: 5,
+            presetName: '검밑솔',
+            bosses: [
+              { id: 14, bossName: '검은마법사', englishName: 'blackmage', difficulty: '익스트림', crystalPrice: 9200000000, fullName: '검은마법사 (익스트림)' },
+              { id: 15, bossName: '발드릭스', englishName: 'baldrix', difficulty: '카오스', crystalPrice: 8000000000, fullName: '발드릭스 (카오스)' }
+            ],
+            bossIds: [14, 15],
+            createdAt: '2025-01-01T00:00:00.000Z',
+            bossCount: 2
+          },
+          {
+            id: 6,
+            presetName: '하세이칼',
+            bosses: [
+              { id: 10, bossName: '세렌', englishName: 'seren', difficulty: '하드', crystalPrice: 3500000000, fullName: '세렌 (하드)' },
+              { id: 11, bossName: '칼링', englishName: 'kaling', difficulty: '익스트림', crystalPrice: 6000000000, fullName: '칼링 (익스트림)' },
+              { id: 12, bossName: '칼로스', englishName: 'kalos', difficulty: '익스트림', crystalPrice: 7000000000, fullName: '칼로스 (익스트림)' }
+            ],
+            bossIds: [10, 11, 12],
+            createdAt: '2025-01-01T00:00:00.000Z',
+            bossCount: 3
+          }
+        ];
+        setTimeout(() => resolve(mockPresets), 300);
+      });
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/boss/preset/list`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('보스 프리셋 목록을 불러오는데 실패했습니다.');
+      }
+      
+      const apiData: ApiResponse<BossPresetResponse[]> = await response.json();
+      
+      if (apiData.status === 'success' && apiData.data) {
+        return apiData.data;
+      } else {
+        throw new Error(apiData.message || '보스 프리셋 목록 조회 실패');
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  }
+
+  // 백엔드 API: 보스별 욕망 아이템 목록 조회
+  async getBossDesireItems(bossId: number): Promise<DesireItemResponse[]> {
+    if (USE_MOCK_DATA) {
+      // Mock 데이터 사용 (임시)
+      return new Promise((resolve) => {
+        setTimeout(() => resolve([]), 200);
+      });
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/boss/desire-items/boss/${bossId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('보스 욕망 아이템 목록을 불러오는데 실패했습니다.');
+      }
+      
+      const apiData: ApiResponse<DesireItemResponse[]> = await response.json();
+      
+      if (apiData.status === 'success' && apiData.data) {
+        return apiData.data;
+      } else {
+        throw new Error(apiData.message || '보스 욕망 아이템 목록 조회 실패');
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
   }
 }
 
@@ -168,4 +325,9 @@ export const getAllBosses = () => bossService.getAllBosses();
 export const getRecommendedBossesForLevel = (level: number) => bossService.getRecommendedBosses(level);
 export const getBossById = (id: string) => bossService.getBossById(id);
 export const getDailyBosses = () => bossService.getBossesByResetType('daily');
-export const getWeeklyBosses = () => bossService.getBossesByResetType('weekly'); 
+export const getWeeklyBosses = () => bossService.getBossesByResetType('weekly');
+
+// 백엔드 API 편의 함수들
+export const getBossListFromAPI = () => bossService.getBossListFromAPI();
+export const getBossPresetList = () => bossService.getBossPresetList();
+export const getBossDesireItems = (bossId: number) => bossService.getBossDesireItems(bossId); 

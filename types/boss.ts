@@ -1,6 +1,6 @@
 // 보스 난이도별 세부 정보
 export interface BossDifficultyInfo {
-  difficulty: 'normal' | 'hard' | 'chaos' | 'extreme';
+  difficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme';
   requiredLevel: number;
   expectedMeso: number;
   expectedItems: string[];
@@ -40,7 +40,7 @@ export interface CharacterBossConfig {
 // 보스 선택 설정 (UI용)
 export interface BossSelection {
   bossId: string;
-  selectedDifficulty: 'normal' | 'hard' | 'chaos' | 'extreme';
+  selectedDifficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme';
   partySize: number;
   isGoldDrop: boolean; // 물욕템 체크 상태 (나중에 API 연동 시 물욕템 드랍 가능 보스에서만 활성화)
 }
@@ -57,4 +57,71 @@ export interface BossSummary {
   completedBosses: number;
   totalBosses: number;
   completionRate: number;
+}
+
+// 백엔드 API 응답 타입들
+export type ForceType = 'ARCANE' | 'AUTHENTIC';
+
+export interface RandomBoxItemResponse {
+  id: number;
+  dropItemName: string;
+  dropItemLevel: number;
+  fullDropItemName: string;
+  hasDropLevel: boolean;
+}
+
+export interface DesireItemResponse {
+  id: number;
+  itemName: string;
+  isRandomBox: boolean;
+  fullItemName: string;
+  bossId: number;
+  bossName: string;
+  bossDifficulty: string;
+  randomBoxItems: RandomBoxItemResponse[];
+}
+
+export interface BossResponse {
+  id: number;
+  bossName: string;
+  bossNameEn?: string; // 예: blackmage
+  englishName?: string; // 과거 호환용
+  difficulty: string; // 예: 익스트림
+  difficultyEn?: string; // 예: extreme
+  crystalPrice: number;
+  maxPartySize: number;
+  isMonthly: boolean;
+  isActive: boolean;
+  minEntryLevel: number;
+  bossLevel: number;
+  requiredForceType: ForceType;
+  requiredForceAmount: number;
+  fullName: string;
+  desireItems: DesireItemResponse[];
+}
+
+export interface BossSimpleResponse {
+  id: number;
+  bossName: string;
+  bossNameEn?: string;
+  englishName?: string; // 과거 호환용
+  difficulty: string;
+  difficultyEn?: string;
+  crystalPrice: number;
+  fullName: string;
+}
+
+export interface BossPresetResponse {
+  id: number;
+  presetName: string;
+  bosses: BossSimpleResponse[];
+  bossIds: number[];
+  createdAt: string;
+  bossCount: number;
+}
+
+export interface ApiResponse<T> {
+  status: string;
+  message: string;
+  data: T;
 } 
