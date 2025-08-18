@@ -37,20 +37,25 @@ export interface CharacterBossConfig {
   weeklyGoal?: number;
 }
 
+// 물욕템 개별 아이템 정보
+export interface DesireDropItem {
+  item: unknown;
+  price: number;
+  ringInfo?: {
+    type: string;
+    level: number;
+    name: string;
+    fullName: string;
+  };
+}
+
 // 보스 선택 설정 (UI용)
 export interface BossSelection {
   bossId: string;
   selectedDifficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme';
   partySize: number;
   isGoldDrop: boolean; // 물욕템 체크 상태
-  desireDropItem?: unknown; // 선택된 물욕템 아이템
-  desireDropPrice?: number; // 물욕템 판매 가격
-  desireDropRingInfo?: { // 반지 정보 (반지상자인 경우)
-    type: string;
-    level: number;
-    name: string;
-    fullName: string;
-  };
+  desireDropItems: DesireDropItem[]; // 물욕템 배열
 }
 
 // 날짜 범위
