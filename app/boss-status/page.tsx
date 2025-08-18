@@ -220,6 +220,27 @@ export default function BossStatusPage() {
     startDate: "2025.06.05",
     endDate: "2025.06.11"
   });
+  // 서버 필터링 상태
+  const [selectedServer, setSelectedServer] = useState<string>('전체');
+
+  // 서버 변경 핸들러 - 선택된 캐릭터가 필터에서 제외되면 자동으로 다른 캐릭터 선택
+  const handleServerChange = (server: string) => {
+    setSelectedServer(server);
+    
+    // 현재 선택된 캐릭터가 새 필터에 포함되는지 확인
+    const newFilteredCharacters = server === '전체' 
+      ? bossCharacters 
+      : bossCharacters.filter(char => char.server === server);
+    
+    const currentCharacterInFilter = newFilteredCharacters.find(char => char.id === selectedCharacterId);
+    
+    // 현재 선택된 캐릭터가 필터에 없으면 첫 번째 캐릭터 선택 (있는 경우)
+    if (!currentCharacterInFilter && newFilteredCharacters.length > 0) {
+      setSelectedCharacterId(newFilteredCharacters[0].id);
+    } else if (newFilteredCharacters.length === 0) {
+      setSelectedCharacterId(null);
+    }
+  };
   const [isBossModalOpen, setIsBossModalOpen] = useState(false);
   const [isAddCharacterModalOpen, setIsAddCharacterModalOpen] = useState(false);
   const [characterBossSelections, setCharacterBossSelections] = useState<Record<string, BossSelection[]>>({});
@@ -233,6 +254,14 @@ export default function BossStatusPage() {
   const [currentDesireDropBoss, setCurrentDesireDropBoss] = useState<{ bossId: string; bossName: string; difficulty: string } | null>(null);
   const [bossDesireItems, setBossDesireItems] = useState<Record<string, Record<string, unknown[]>>>({});
   const [bossHasDesireItems, setBossHasDesireItems] = useState<Record<string, boolean>>({});
+
+  // 서버 목록 동적 생성 (캐릭터들의 서버만 포함)
+  const availableServers = ['전체', ...Array.from(new Set(bossCharacters.map(char => char.server)))];
+  
+  // 서버별 필터링된 캐릭터 목록
+  const filteredCharacters = selectedServer === '전체' 
+    ? bossCharacters 
+    : bossCharacters.filter(char => char.server === selectedServer);
 
   const selectedCharacter = bossCharacters.find((char: Character) => char.id === selectedCharacterId);
   const selectedBossSelections = selectedCharacterId ? characterBossSelections[selectedCharacterId] || [] : [];
@@ -437,9 +466,14 @@ export default function BossStatusPage() {
 
 
 
-  // 전체 총합 계산 (모든 캐릭터) - 결정석 + 물욕템
-  const allTotalBossCount = Object.values(characterBossSelections).reduce((sum, selections) => sum + selections.length, 0);
-  const allTotalExpectedMeso = Object.values(characterBossSelections).reduce((sum, selections) => {
+  // 필터링된 캐릭터들의 총합 계산 - 결정석 + 물욕템
+  const filteredTotalBossCount = filteredCharacters.reduce((sum, character) => {
+    const selections = characterBossSelections[character.id] || [];
+    return sum + selections.length;
+  }, 0);
+  
+  const filteredTotalExpectedMeso = filteredCharacters.reduce((sum, character) => {
+    const selections = characterBossSelections[character.id] || [];
     const characterTotal = selections.reduce((charSum, selection) => {
       const boss = allBosses.find(b => b.id === selection.bossId);
       const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
@@ -522,15 +556,19 @@ export default function BossStatusPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium">
-                전체
-              </span>
-              <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm">
-                크로아
-              </span>
-              <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-lg text-sm">
-                챌린저스1
-              </span>
+              {availableServers.map((server) => (
+                <button
+                  key={server}
+                  onClick={() => handleServerChange(server)}
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                    selectedServer === server
+                      ? 'bg-orange-100 text-orange-700'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {server}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -575,12 +613,14 @@ export default function BossStatusPage() {
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                     <p className="mt-2 text-gray-500">캐릭터 목록을 불러오는 중...</p>
                   </div>
-                ) : bossCharacters.length === 0 ? (
+                ) : filteredCharacters.length === 0 ? (
                   <div className="text-center py-8">
-                    <p className="text-gray-500">캐릭터가 없습니다.</p>
+                    <p className="text-gray-500">
+                      {selectedServer === '전체' ? '캐릭터가 없습니다.' : `${selectedServer} 서버에 캐릭터가 없습니다.`}
+                    </p>
                   </div>
                 ) : (
-                  bossCharacters.map((character: Character) => (
+                  filteredCharacters.map((character: Character) => (
                   <div
                     key={character.id}
                     className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
@@ -855,12 +895,12 @@ export default function BossStatusPage() {
               
               {/* 총계 하단 버튼 - 최상부 고정 */}
               <button className="w-full py-2 mb-4 border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors">
-                총 {allTotalBossCount}마리 {formatMeso(allTotalExpectedMeso)}
+                총 {filteredTotalBossCount}마리 {formatMeso(filteredTotalExpectedMeso)}
               </button>
               
               <div className="space-y-4 h-[calc(100vh-400px)] overflow-y-auto">
                 {/* 캐릭터별 박스 */}
-                {bossCharacters.map((character) => {
+                {filteredCharacters.map((character) => {
                   const characterSelections = characterBossSelections[character.id] || [];
                   const characterMeso = characterSelections.reduce((sum, selection) => {
                     const boss = allBosses.find(b => b.id === selection.bossId);

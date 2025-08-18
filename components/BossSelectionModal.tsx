@@ -180,11 +180,13 @@ export default function BossSelectionModal({
 
   useEffect(() => {
     if (isOpen) {
-      loadModalData();
-      // 모달이 열릴 때마다 프리셋 선택 상태 초기화
+      // 모달이 열릴 때마다 모든 상태 초기화
+      setLocalSelectedBosses(selectedBosses);
       setSelectedPresetId(null);
+      setDifficultyIndexByBossId({});
+      loadModalData();
     }
-  }, [isOpen, loadModalData]);
+  }, [isOpen, loadModalData, selectedBosses]);
 
   const englishToImage = (englishName?: string) => {
     if (!englishName) return '/image/logo.png';
