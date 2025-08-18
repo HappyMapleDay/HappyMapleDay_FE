@@ -8,12 +8,11 @@ import { Character } from "../../types";
 import { BossSelection } from "../../types/boss";
 import BossSelectionModal from "../../components/BossSelectionModal";
 import AddBossCharacterModal from "../../components/AddBossCharacterModal";
-import { mockBosses } from "../../data/mockBosses";
 import { mockAllCharacters } from "../../data/mockCharacters";
 import { useAuth } from "../../store/authStore";
 import { getCharacterList } from "../../services/characterService";
-// import { getBossListFromAPI } from "../../services/bossService";
-// import type { BossResponse } from "../../types/boss";
+import { getBossListFromAPI } from "../../services/bossService";
+import type { BossResponse, Boss } from "../../types/boss";
 // 프리셋 로직은 모달 내부에서 처리
 
 export default function BossStatusPage() {
@@ -69,7 +68,93 @@ export default function BossStatusPage() {
     fetchCharacters();
   }, [isLoggedIn]);
 
-  // API 전체 보스 리스트 로드는 모달에서 처리
+  // API 보스 데이터 로드 (BossSelectionModal과 동일한 로직)
+  useEffect(() => {
+    const loadBossData = async () => {
+      if (!isLoggedIn) return;
+      
+      try {
+        setIsLoadingBosses(true);
+        const apiList = await getBossListFromAPI();
+        
+        // BossSelectionModal과 동일한 변환 로직
+        const transformApiBossesToUi = (apiList: (BossResponse & { englishName?: string })[]): Boss[] => {
+          const group = new Map<string, Boss>();
+          for (const item of apiList) {
+            const en = item.bossNameEn || item.englishName || '';
+            const id = en || item.id.toString();
+            const difficulty = mapDifficulty(item.difficultyEn || item.difficulty);
+            const existing = group.get(id);
+            const difficultyInfo: Boss['difficulties'][number] = {
+              difficulty,
+              requiredLevel: (item as BossResponse).minEntryLevel ?? 0,
+              expectedMeso: item.crystalPrice || 0,
+              expectedItems: [] as string[],
+            };
+
+            if (existing) {
+              existing.difficulties.push(difficultyInfo);
+            } else {
+              group.set(id, {
+                id,
+                name: item.bossName,
+                resetType: 'weekly',
+                image: englishToImage(en),
+                difficulties: [difficultyInfo],
+              });
+            }
+          }
+          // 난이도 정렬: easy → normal → hard → chaos → extreme
+          const order: Record<'easy' | 'normal' | 'hard' | 'chaos' | 'extreme', number> = {
+            easy: 0,
+            normal: 1,
+            hard: 2,
+            chaos: 3,
+            extreme: 4,
+          };
+          for (const boss of group.values()) {
+            boss.difficulties.sort((a, b) => order[a.difficulty] - order[b.difficulty]);
+          }
+          return Array.from(group.values());
+        };
+
+        const uiBosses = transformApiBossesToUi(apiList);
+        setAllBosses(uiBosses);
+      } catch (error) {
+        console.error('보스 목록을 불러오는데 실패했습니다:', error);
+      } finally {
+        setIsLoadingBosses(false);
+      }
+    };
+
+    loadBossData();
+  }, [isLoggedIn]);
+
+  // 난이도 매핑 함수 (BossSelectionModal과 동일)
+  const mapDifficulty = (koOrEn?: string): 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme' => {
+    const v = (koOrEn || '').toLowerCase();
+    if (v === 'easy' || v === '이지') return 'easy';
+    if (v === 'normal' || v === '노말') return 'normal';
+    if (v === 'hard' || v === '하드') return 'hard';
+    if (v === 'chaos' || v === '카오스') return 'chaos';
+    if (v === 'extreme' || v === '익스트림') return 'extreme';
+    return 'normal';
+  };
+
+  // 영문명을 이미지 경로로 변환 (BossSelectionModal과 동일)
+  const englishToImage = (englishName?: string) => {
+    if (!englishName) return '/image/logo.png';
+    const overrides: Record<string, string> = {
+      vervushilla: 'vernushilla',
+    };
+
+    const normalized = englishName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '');
+
+    const fileKey = overrides[normalized] || normalized;
+    return `/image/boss-illustrate/${fileKey}-illustrate.png`;
+  };
 
   // 현재 보돌캐로 선택된 캐릭터들
   const [bossCharacters, setBossCharacters] = useState<Character[]>([]);
@@ -82,8 +167,10 @@ export default function BossStatusPage() {
   const [isBossModalOpen, setIsBossModalOpen] = useState(false);
   const [isAddCharacterModalOpen, setIsAddCharacterModalOpen] = useState(false);
   const [characterBossSelections, setCharacterBossSelections] = useState<Record<string, BossSelection[]>>({});
-  // 프리셋은 모달에서만 사용
-  // const [apiBosses, setApiBosses] = useState<BossResponse[]>([]);
+  
+  // 실제 API 보스 데이터 사용
+  const [allBosses, setAllBosses] = useState<Boss[]>([]);
+  const [isLoadingBosses, setIsLoadingBosses] = useState(true);
 
   const selectedCharacter = bossCharacters.find((char: Character) => char.id === selectedCharacterId);
   const selectedBossSelections = selectedCharacterId ? characterBossSelections[selectedCharacterId] || [] : [];
@@ -97,7 +184,7 @@ export default function BossStatusPage() {
         if (existing) return existing;
         
         // 새로운 보스의 경우 기본 설정으로 추가
-        const boss = mockBosses.find(b => b.id === bossId);
+        const boss = allBosses.find(b => b.id === bossId);
         const firstDifficulty = boss?.difficulties[0];
         
         return {
@@ -119,7 +206,7 @@ export default function BossStatusPage() {
   const handleDifficultyChange = (bossId: string, direction: 'prev' | 'next') => {
     if (!selectedCharacterId) return;
 
-    const boss = mockBosses.find(b => b.id === bossId);
+    const boss = allBosses.find(b => b.id === bossId);
     if (!boss) return;
 
     const currentSelections = characterBossSelections[selectedCharacterId] || [];
@@ -239,7 +326,7 @@ export default function BossStatusPage() {
   const allTotalBossCount = Object.values(characterBossSelections).reduce((sum, selections) => sum + selections.length, 0);
   const allTotalExpectedMeso = Object.values(characterBossSelections).reduce((sum, selections) => {
     const characterTotal = selections.reduce((charSum, selection) => {
-      const boss = mockBosses.find(b => b.id === selection.bossId);
+      const boss = allBosses.find(b => b.id === selection.bossId);
       const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
       const mesoPerPlayer = difficultyInfo?.expectedMeso || 0;
       return charSum + (mesoPerPlayer / selection.partySize);
@@ -444,11 +531,16 @@ export default function BossStatusPage() {
               {/* 프리셋 탭 제거: 프리셋은 모달 내부에서만 노출 */}
 
               <div className="h-[calc(100vh-400px)] overflow-y-auto">
-                {selectedCharacterId ? (
+                {isLoadingBosses ? (
+                  <div className="text-center py-12">
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <p className="mt-2 text-gray-500">보스 데이터를 불러오는 중...</p>
+                  </div>
+                ) : selectedCharacterId ? (
                   selectedBossSelections.length > 0 ? (
                     <div className="space-y-3">
                     {selectedBossSelections.map((selection) => {
-                      const boss = mockBosses.find(b => b.id === selection.bossId);
+                      const boss = allBosses.find(b => b.id === selection.bossId);
                       const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
                       
                       if (!boss || !difficultyInfo) return null;
@@ -623,7 +715,7 @@ export default function BossStatusPage() {
                 {bossCharacters.map((character) => {
                   const characterSelections = characterBossSelections[character.id] || [];
                   const characterMeso = characterSelections.reduce((sum, selection) => {
-                    const boss = mockBosses.find(b => b.id === selection.bossId);
+                    const boss = allBosses.find(b => b.id === selection.bossId);
                     const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
                     const mesoPerPlayer = difficultyInfo?.expectedMeso || 0;
                     return sum + (mesoPerPlayer / selection.partySize);
