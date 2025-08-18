@@ -8,10 +8,11 @@ import { Character } from "../../types";
 import { BossSelection } from "../../types/boss";
 import BossSelectionModal from "../../components/BossSelectionModal";
 import AddBossCharacterModal from "../../components/AddBossCharacterModal";
+import DesireDropModal from "../../components/DesireDropModal";
 import { mockAllCharacters } from "../../data/mockCharacters";
 import { useAuth } from "../../store/authStore";
 import { getCharacterList } from "../../services/characterService";
-import { getBossListFromAPI } from "../../services/bossService";
+import { getBossListFromAPI, getBossDesireItems } from "../../services/bossService";
 import type { BossResponse, Boss } from "../../types/boss";
 // 프리셋 로직은 모달 내부에서 처리
 
@@ -120,6 +121,52 @@ export default function BossStatusPage() {
 
         const uiBosses = transformApiBossesToUi(apiList);
         setAllBosses(uiBosses);
+        
+        // 각 보스별 난이도별 물욕템 존재 여부 확인
+        const desireItemsCheck: Record<string, boolean> = {};
+        const desireItemsData: Record<string, Record<string, unknown[]>> = {};
+        
+        for (const uiBoss of uiBosses) {
+          const relatedApiBosses = apiList.filter((b: BossResponse & { englishName?: string }) => 
+            (b.bossNameEn || b.englishName) === uiBoss.id || b.bossName === uiBoss.name
+          );
+          
+          let hasDesireItems = false;
+          const difficultyItems: Record<string, unknown[]> = {};
+          
+          for (const apiBoss of relatedApiBosses) {
+            try {
+              const bossNumericId = (apiBoss as unknown as { id?: number; bossId?: number }).id ?? 
+                                   (apiBoss as unknown as { id?: number; bossId?: number }).bossId;
+              if (bossNumericId != null) {
+                const items = await getBossDesireItems(bossNumericId);
+                if (items.length > 0) {
+                  hasDesireItems = true;
+                  
+                  // 난이도 정보 가져오기
+                  const difficulty = mapDifficulty(apiBoss.difficultyEn || apiBoss.difficulty);
+                  
+                  // 난이도별로 아이템 분류
+                  if (!difficultyItems[difficulty]) {
+                    difficultyItems[difficulty] = [];
+                  }
+                  difficultyItems[difficulty].push(...items);
+                }
+              }
+            } catch (error) {
+              console.warn(`Failed to fetch desire items for ${uiBoss.name}:`, error);
+            }
+          }
+          
+          desireItemsCheck[uiBoss.id] = hasDesireItems;
+          if (hasDesireItems) {
+            desireItemsData[uiBoss.id] = difficultyItems;
+          }
+        }
+        
+        setBossHasDesireItems(desireItemsCheck);
+        setBossDesireItems(desireItemsData);
+        
       } catch (error) {
         console.error('보스 목록을 불러오는데 실패했습니다:', error);
       } finally {
@@ -156,6 +203,15 @@ export default function BossStatusPage() {
     return `/image/boss-illustrate/${fileKey}-illustrate.png`;
   };
 
+  // 반지 이름으로 반지 타입 결정
+  const getRingType = (ringName: string): 'weapon' | 'restraint' | 'continue' => {
+    const lowerName = ringName.toLowerCase();
+    if (lowerName.includes('weapon') || lowerName.includes('웨폰')) return 'weapon';
+    if (lowerName.includes('restraint') || lowerName.includes('리스트')) return 'restraint';
+    if (lowerName.includes('continue') || lowerName.includes('컨티')) return 'continue';
+    return 'weapon'; // 기본값
+  };
+
   // 현재 보돌캐로 선택된 캐릭터들
   const [bossCharacters, setBossCharacters] = useState<Character[]>([]);
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
@@ -171,30 +227,62 @@ export default function BossStatusPage() {
   // 실제 API 보스 데이터 사용
   const [allBosses, setAllBosses] = useState<Boss[]>([]);
   const [isLoadingBosses, setIsLoadingBosses] = useState(true);
+  
+  // 물욕템 관련 상태
+  const [isDesireDropModalOpen, setIsDesireDropModalOpen] = useState(false);
+  const [currentDesireDropBoss, setCurrentDesireDropBoss] = useState<{ bossId: string; bossName: string; difficulty: string } | null>(null);
+  const [bossDesireItems, setBossDesireItems] = useState<Record<string, Record<string, unknown[]>>>({});
+  const [bossHasDesireItems, setBossHasDesireItems] = useState<Record<string, boolean>>({});
 
   const selectedCharacter = bossCharacters.find((char: Character) => char.id === selectedCharacterId);
   const selectedBossSelections = selectedCharacterId ? characterBossSelections[selectedCharacterId] || [] : [];
 
-  const handleBossesChange = (bossIds: string[]) => {
+  const handleBossesChange = (bossIds: string[], difficultySettings?: Record<string, number>) => {
+    console.log('handleBossesChange called with:', { bossIds, difficultySettings, allBossesLength: allBosses.length });
+    
     if (selectedCharacterId) {
       // 기존 선택 유지하면서 새로운 보스는 기본 설정으로 추가
       const existingSelections = characterBossSelections[selectedCharacterId] || [];
       const newSelections: BossSelection[] = bossIds.map(bossId => {
         const existing = existingSelections.find(sel => sel.bossId === bossId);
-        if (existing) return existing;
+        if (existing) {
+          // 기존 보스의 경우 난이도만 업데이트 (difficultySettings가 있는 경우)
+          if (difficultySettings && difficultySettings[bossId] !== undefined) {
+            const boss = allBosses.find(b => b.id === bossId);
+            const difficultyIndex = difficultySettings[bossId];
+            const selectedDifficulty = boss?.difficulties[difficultyIndex]?.difficulty || existing.selectedDifficulty;
+            console.log(`Updating existing boss ${bossId} difficulty to: ${selectedDifficulty}`);
+            return { ...existing, selectedDifficulty };
+          }
+          return existing;
+        }
         
         // 새로운 보스의 경우 기본 설정으로 추가
         const boss = allBosses.find(b => b.id === bossId);
-        const firstDifficulty = boss?.difficulties[0];
+        if (!boss) {
+          console.warn(`Boss not found: ${bossId}`);
+          return null;
+        }
+        
+        let selectedDifficulty = boss.difficulties[0]?.difficulty || 'normal';
+        
+        // difficultySettings가 있으면 해당 난이도 사용
+        if (difficultySettings && difficultySettings[bossId] !== undefined) {
+          const difficultyIndex = difficultySettings[bossId];
+          selectedDifficulty = boss.difficulties[difficultyIndex]?.difficulty || selectedDifficulty;
+        }
+        
+        console.log(`Adding new boss ${boss.name} with difficulty: ${selectedDifficulty}`);
         
         return {
           bossId,
-          selectedDifficulty: firstDifficulty?.difficulty || 'normal',
+          selectedDifficulty,
           partySize: 1,
           isGoldDrop: false
         };
-      });
+      }).filter(Boolean) as BossSelection[];
 
+      console.log('Setting new selections:', newSelections);
       setCharacterBossSelections(prev => ({
         ...prev,
         [selectedCharacterId]: newSelections
@@ -260,22 +348,50 @@ export default function BossStatusPage() {
     }));
   };
 
-  // 물욕템 체크 토글 함수
-  const handleDesireDropToggle = (bossId: string) => {
+  // 물욕템 체크 모달 열기
+  const handleDesireDropClick = (bossId: string) => {
     if (!selectedCharacterId) return;
+    
+    const boss = allBosses.find(b => b.id === bossId);
+    if (!boss || !bossHasDesireItems[bossId]) return;
+    
+    // 현재 선택된 난이도 정보 가져오기
+    const currentSelection = characterBossSelections[selectedCharacterId]?.find(sel => sel.bossId === bossId);
+    const currentDifficulty = currentSelection?.selectedDifficulty || 'normal';
+    
+    setCurrentDesireDropBoss({ 
+      bossId, 
+      bossName: boss.name,
+      difficulty: currentDifficulty
+    });
+    setIsDesireDropModalOpen(true);
+  };
+
+  // 물욕템 저장 함수
+  const handleDesireDropSave = (selectedItem: unknown | null, price?: number, ringInfo?: { type: string; level: number; name: string; fullName: string }) => {
+    if (!selectedCharacterId || !currentDesireDropBoss) return;
+
+    console.log('Saving desire drop with price:', price); // 디버깅
 
     const currentSelections = characterBossSelections[selectedCharacterId] || [];
-    const currentSelection = currentSelections.find(sel => sel.bossId === bossId);
-    if (!currentSelection) return;
+    const bossId = currentDesireDropBoss.bossId;
 
     setCharacterBossSelections(prev => ({
       ...prev,
       [selectedCharacterId]: currentSelections.map(sel =>
         sel.bossId === bossId 
-          ? { ...sel, isGoldDrop: !sel.isGoldDrop }
+          ? { 
+              ...sel, 
+              isGoldDrop: !!selectedItem,
+              desireDropItem: selectedItem,
+              desireDropPrice: price,
+              desireDropRingInfo: ringInfo
+            }
           : sel
       )
     }));
+
+    setCurrentDesireDropBoss(null);
   };
 
   // 프리셋 관련 로직 제거 (모달에서 처리)
@@ -322,14 +438,21 @@ export default function BossStatusPage() {
 
 
 
-  // 전체 총합 계산 (모든 캐릭터)
+  // 전체 총합 계산 (모든 캐릭터) - 결정석 + 물욕템
   const allTotalBossCount = Object.values(characterBossSelections).reduce((sum, selections) => sum + selections.length, 0);
   const allTotalExpectedMeso = Object.values(characterBossSelections).reduce((sum, selections) => {
     const characterTotal = selections.reduce((charSum, selection) => {
       const boss = allBosses.find(b => b.id === selection.bossId);
       const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
       const mesoPerPlayer = difficultyInfo?.expectedMeso || 0;
-      return charSum + (mesoPerPlayer / selection.partySize);
+      const actualMeso = mesoPerPlayer / selection.partySize;
+      
+      // 물욕템 체크된 경우 실제 입력한 가격 사용 (메소 단위)
+      const desireDropMeso = selection.isGoldDrop && selection.desireDropPrice 
+        ? selection.desireDropPrice / selection.partySize 
+        : 0;
+      
+      return charSum + actualMeso + desireDropMeso;
     }, 0);
     return sum + characterTotal;
   }, 0);
@@ -539,7 +662,21 @@ export default function BossStatusPage() {
                 ) : selectedCharacterId ? (
                   selectedBossSelections.length > 0 ? (
                     <div className="space-y-3">
-                    {selectedBossSelections.map((selection) => {
+                    {selectedBossSelections
+                      .sort((a, b) => {
+                        // 결정석 가격이 높은 순서대로 정렬
+                        const bossA = allBosses.find(boss => boss.id === a.bossId);
+                        const bossB = allBosses.find(boss => boss.id === b.bossId);
+                        
+                        const difficultyA = bossA?.difficulties.find(d => d.difficulty === a.selectedDifficulty);
+                        const difficultyB = bossB?.difficulties.find(d => d.difficulty === b.selectedDifficulty);
+                        
+                        const mesoA = difficultyA?.expectedMeso || 0;
+                        const mesoB = difficultyB?.expectedMeso || 0;
+                        
+                        return mesoB - mesoA; // 내림차순 (높은 가격부터)
+                      })
+                      .map((selection) => {
                       const boss = allBosses.find(b => b.id === selection.bossId);
                       const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
                       
@@ -600,7 +737,7 @@ export default function BossStatusPage() {
                                   <span className="text-base font-medium text-orange-500">가격</span>
                                   <div className="flex items-center gap-1">
                                     <span className="text-sm text-gray-600">결정석</span>
-                                    <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso)}</span>
+                                    <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso / selection.partySize)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -641,35 +778,44 @@ export default function BossStatusPage() {
                                 </div>
                                                                                                   <div className="flex items-center gap-1 ml-auto mr-2">
                                   <span className="text-sm text-gray-600">물욕템</span>
-                                  <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso * 1.2)}</span>
+                                  <span className="text-sm font-bold text-gray-900 w-[120px] text-right">
+                                    {selection.isGoldDrop && selection.desireDropPrice 
+                                      ? formatMeso(selection.desireDropPrice / selection.partySize) 
+                                      : '-'}
+                                  </span>
                                 </div>
                               </div>
                             </div>
 
 
 
-                          {/* 물욕템 체크 버튼 */}
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDesireDropToggle(selection.bossId);
-                            }}
-                            // 나중에 API 연동 시: disabled={!boss.hasDesireDrop}
-                            className={`absolute top-4 right-4 px-3 py-1 text-xs rounded-lg font-medium transition-colors ${
-                              selection.isGoldDrop 
-                                ? 'bg-orange-500 text-white' 
-                                : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                            }`}
-                          >
-                            물욕템 체크
-                          </button>
+                          {/* 물욕템 체크 버튼 (물욕템이 있는 보스만 표시) */}
+                          {bossHasDesireItems[selection.bossId] && (
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDesireDropClick(selection.bossId);
+                              }}
+                              className={`absolute top-4 right-4 px-3 py-1 text-xs rounded-lg font-medium transition-colors ${
+                                selection.isGoldDrop 
+                                  ? 'bg-orange-500 text-white' 
+                                  : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                              }`}
+                            >
+                              물욕템 체크
+                            </button>
+                          )}
                         </div>
                       </div>
                       );
                     })}
                     
                     <button 
-                      onClick={() => setIsBossModalOpen(true)}
+                      onClick={() => {
+                        console.log('Opening modal with current selections:', selectedBossSelections);
+                        console.log('All bosses available:', allBosses.length);
+                        setIsBossModalOpen(true);
+                      }}
                       className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
                     >
                       + 보스 추가/수정
@@ -684,7 +830,10 @@ export default function BossStatusPage() {
                     </div>
                     <p className="text-gray-500 mb-4">선택된 보스가 없습니다.</p>
                     <button 
-                      onClick={() => setIsBossModalOpen(true)}
+                      onClick={() => {
+                        console.log('Opening modal (empty state) with:', { selectedCharacterId, allBossesLength: allBosses.length });
+                        setIsBossModalOpen(true);
+                      }}
                       className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                     >
                       보스 선택하기
@@ -748,7 +897,16 @@ export default function BossStatusPage() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-600">물욕템</span>
-                          <span className="font-medium">-</span>
+                          <span className="font-medium">
+                            {(() => {
+                              const desireDropMeso = characterSelections.reduce((sum, selection) => {
+                                if (!selection.isGoldDrop || !selection.desireDropPrice) return sum;
+                                const actualPrice = selection.desireDropPrice; // 이미 메소 단위
+                                return sum + (actualPrice / selection.partySize);
+                              }, 0);
+                              return desireDropMeso > 0 ? formatMeso(desireDropMeso) : '-';
+                            })()}
+                          </span>
                         </div>
                       </div>
 
@@ -757,7 +915,17 @@ export default function BossStatusPage() {
                         <div className="flex items-center justify-center gap-1 text-base font-bold text-orange-500">
                           <span>{characterSelections.length}마리</span>
                           <span className="text-gray-300">|</span>
-                          <span>{formatMeso(characterMeso)}</span>
+                          <span>
+                            {(() => {
+                              const desireDropMeso = characterSelections.reduce((sum, selection) => {
+                                if (!selection.isGoldDrop || !selection.desireDropPrice) return sum;
+                                const actualPrice = selection.desireDropPrice; // 이미 메소 단위
+                                return sum + (actualPrice / selection.partySize);
+                              }, 0);
+                              const totalMeso = characterMeso + desireDropMeso;
+                              return formatMeso(totalMeso);
+                            })()}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -809,6 +977,55 @@ export default function BossStatusPage() {
          currentBossCharacterIds={bossCharacters.map(char => char.id)}
          onAddCharacters={handleAddCharacters}
        />
+
+       {/* Desire Drop Modal */}
+       {currentDesireDropBoss && (
+         <DesireDropModal
+           isOpen={isDesireDropModalOpen}
+           onClose={() => {
+             setIsDesireDropModalOpen(false);
+             setCurrentDesireDropBoss(null);
+           }}
+           bossName={currentDesireDropBoss.bossName}
+           availableItems={
+             bossDesireItems[currentDesireDropBoss.bossId]?.[currentDesireDropBoss.difficulty]?.map((item: unknown) => {
+               const typedItem = item as { 
+                 id?: number; 
+                 itemName?: string; 
+                 fullItemName?: string; 
+                 itemNameEn?: string;
+                 isRandomBox?: boolean;
+                 randomBoxItems?: Array<{
+                   randomBoxItemId?: number;
+                   dropItemName?: string;
+                   dropItemNameEn?: string;
+                   dropItemLevel?: number;
+                   fullDropItemName?: string;
+                   hasDropLevel?: boolean;
+                 }>;
+               };
+               
+               const isRingBox = typedItem.isRandomBox && 
+                                typedItem.randomBoxItems && 
+                                typedItem.randomBoxItems.length > 0;
+               
+               return {
+                 id: typedItem.id?.toString() || Math.random().toString(),
+                 name: typedItem.itemName || typedItem.fullItemName || '알 수 없는 아이템',
+                 image: `/image/drop-item/${typedItem.itemNameEn || typedItem.itemName}.png`,
+                 isRingBox: isRingBox,
+                 ringOptions: isRingBox ? typedItem.randomBoxItems?.map(ringItem => ({
+                   type: getRingType(ringItem.dropItemName || ringItem.dropItemNameEn || ''),
+                   level: ringItem.dropItemLevel || 1,
+                   name: ringItem.dropItemName || ringItem.dropItemNameEn || '알 수 없는 반지',
+                   fullName: ringItem.fullDropItemName || ringItem.dropItemName || '알 수 없는 반지'
+                 })) : undefined
+               };
+             }) || []
+           }
+           onSave={handleDesireDropSave}
+         />
+       )}
      </div>
    );
  } 

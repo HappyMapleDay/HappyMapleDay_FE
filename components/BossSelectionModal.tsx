@@ -11,7 +11,7 @@ interface BossSelectionModalProps {
   onClose: () => void;
   character: Character;
   selectedBosses: string[];
-  onBossesChange: (bossIds: string[]) => void;
+  onBossesChange: (bossIds: string[], difficultySettings?: Record<string, number>) => void;
 }
 
 export default function BossSelectionModal({
@@ -379,7 +379,9 @@ export default function BossSelectionModal({
   };
 
   const handleSave = () => {
-    onBossesChange(localSelectedBosses);
+    console.log('Saving with bosses:', localSelectedBosses);
+    console.log('Difficulty settings:', difficultyIndexByBossId);
+    onBossesChange(localSelectedBosses, difficultyIndexByBossId);
     onClose();
   };
 

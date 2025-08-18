@@ -42,7 +42,15 @@ export interface BossSelection {
   bossId: string;
   selectedDifficulty: 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme';
   partySize: number;
-  isGoldDrop: boolean; // 물욕템 체크 상태 (나중에 API 연동 시 물욕템 드랍 가능 보스에서만 활성화)
+  isGoldDrop: boolean; // 물욕템 체크 상태
+  desireDropItem?: unknown; // 선택된 물욕템 아이템
+  desireDropPrice?: number; // 물욕템 판매 가격
+  desireDropRingInfo?: { // 반지 정보 (반지상자인 경우)
+    type: string;
+    level: number;
+    name: string;
+    fullName: string;
+  };
 }
 
 // 날짜 범위
