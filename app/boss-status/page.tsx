@@ -245,9 +245,33 @@ export default function BossStatusPage() {
     const apiBoss = apiBosses.find(boss => boss.bossId === apiBossId);
     return apiBoss?.bossNameEn || apiBoss?.englishName;
   };
+  
+  // API 보스 ID(숫자)로부터 UI에서 사용하는 보스 선택 정보를 찾기
+  const findBossSelection = (characterId: string, apiBossId: number): any => {
+    const selections = characterBossSelections[characterId] || [];
+    const apiBoss = apiBosses.find(boss => boss.bossId === apiBossId);
+    
+    if (!apiBoss) return null;
+    
+    // UI 보스 ID와 난이도로 매칭
+    return selections.find(selection => {
+      const uiBossId = apiBoss.bossNameEn || apiBoss.englishName;
+      const difficultyMap: Record<string, string> = {
+        '이지': 'easy',
+        '노말': 'normal', 
+        '하드': 'hard',
+        '카오스': 'chaos',
+        '익스트림': 'extreme'
+      };
+      
+      const uiDifficulty = difficultyMap[apiBoss.difficulty] || apiBoss.difficultyEn || 'normal';
+      
+      return selection.bossId === uiBossId && selection.selectedDifficulty === uiDifficulty;
+    });
+  };
 
-  // UI 보스 ID(영문명)를 API 보스 ID(숫자)로 매핑
-  const getBossApiId = (uiBossId: string): number => {
+  // UI 보스 ID(영문명)와 난이도를 API 보스 ID(숫자)로 매핑
+  const getBossApiId = (uiBossId: string, difficulty: string): number => {
     // 첫 번째 호출에서만 구조 로그 출력
     if (!hasLoggedBossStructure && apiBosses.length > 0) {
       console.log('=== apiBosses 데이터 구조 분석 ===');
@@ -257,10 +281,24 @@ export default function BossStatusPage() {
       setHasLoggedBossStructure(true);
     }
     
-    // 원본 API 데이터에서 영문명으로 찾기
+    // 난이도 매핑 (UI -> API)
+    const difficultyMap: Record<string, string> = {
+      'easy': '이지',
+      'normal': '노말', 
+      'hard': '하드',
+      'chaos': '카오스',
+      'extreme': '익스트림'
+    };
+    
+    const apiDifficulty = difficultyMap[difficulty] || difficulty;
+    
+    // 원본 API 데이터에서 영문명과 난이도로 찾기
     const apiBoss = apiBosses.find(boss => {
       const englishName = boss.bossNameEn || boss.englishName;
-      return englishName === uiBossId;
+      const bossMatches = englishName === uiBossId;
+      const difficultyMatches = boss.difficulty === apiDifficulty || boss.difficultyEn === difficulty;
+      
+      return bossMatches && difficultyMatches;
     });
     
     if (apiBoss) {
@@ -270,12 +308,12 @@ export default function BossStatusPage() {
         console.log('ID 필드 확인: bossId =', apiBoss.bossId);
       }
       
-      console.log(`매칭: ${uiBossId} -> ${apiBoss.bossId}`);
+      console.log(`매칭: ${uiBossId} (${difficulty}) -> ${apiBoss.bossId}`);
       return apiBoss.bossId;
     }
     
     // 찾지 못한 경우 0 반환 (나중에 필터링됨)
-    console.warn(`API 보스 ID를 찾을 수 없음: ${uiBossId}`);
+    console.warn(`API 보스 ID를 찾을 수 없음: ${uiBossId} (${difficulty})`);
     return 0;
   };
 
@@ -619,17 +657,9 @@ export default function BossStatusPage() {
               let bossApiId = 0;
               
               if (boss) {
-                // UI 보스 ID(영문명)를 API 보스 ID(숫자)로 매핑
-                // API 보스 데이터에서 영문명으로 찾아서 실제 ID 가져오기
-                const apiBoss = allBosses.find(b => b.id === selection.bossId);
-                if (apiBoss && apiBoss.id) {
-                  // allBosses는 이미 변환된 데이터이므로, 원본 API 데이터를 찾아야 함
-                  // 임시로 영문명을 숫자로 매핑하는 함수 사용
-                  bossApiId = getBossApiId(selection.bossId);
-                  console.log(`보스 ${boss.name}: UI ID = ${boss.id}, API ID = ${bossApiId}`);
-                } else {
-                  console.warn(`API 보스 ID를 찾을 수 없음: ${selection.bossId}`);
-                }
+                // UI 보스 ID(영문명)와 난이도를 API 보스 ID(숫자)로 매핑
+                bossApiId = getBossApiId(selection.bossId, selection.selectedDifficulty);
+                console.log(`보스 ${boss.name} (${selection.selectedDifficulty}): UI ID = ${boss.id}, API ID = ${bossApiId}`);
               } else {
                 console.warn(`보스를 찾을 수 없음: ${selection.bossId}`);
               }
@@ -677,8 +707,10 @@ export default function BossStatusPage() {
         // 추천된 보스들만 남기고 나머지는 제거
         const updatedSelections = currentSelections.filter(selection => {
           const isRecommended = characterRec.bosses.some(recommended => {
-            const recommendedUiId = getUiBossId(recommended.bossId);
-            return recommendedUiId === selection.bossId;
+            const matchingSelection = findBossSelection(characterId, recommended.bossId);
+            return matchingSelection && 
+                   matchingSelection.bossId === selection.bossId && 
+                   matchingSelection.selectedDifficulty === selection.selectedDifficulty;
           });
           return isRecommended;
         });
@@ -707,9 +739,16 @@ export default function BossStatusPage() {
     const characterRec = world.characters.find(c => c.characterId.toString() === characterId);
     if (!characterRec) return false;
 
+    // 현재 선택된 보스 정보 찾기
+    const currentSelection = characterBossSelections[characterId]?.find(sel => sel.bossId === bossId);
+    if (!currentSelection) return false;
+
+    // 추천된 보스 목록에서 현재 보스와 매칭되는 것이 있는지 확인
     return !characterRec.bosses.some(recommended => {
-      const recommendedUiId = getUiBossId(recommended.bossId);
-      return recommendedUiId === bossId;
+      const matchingSelection = findBossSelection(characterId, recommended.bossId);
+      return matchingSelection && 
+             matchingSelection.bossId === currentSelection.bossId && 
+             matchingSelection.selectedDifficulty === currentSelection.selectedDifficulty;
     });
   };
 
