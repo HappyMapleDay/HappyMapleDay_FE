@@ -56,6 +56,7 @@ export interface BossSelection {
   partySize: number;
   isGoldDrop: boolean; // 물욕템 체크 상태
   desireDropItems: DesireDropItem[]; // 물욕템 배열
+  isCleared: boolean; // 보스 클리어 상태
 }
 
 // 날짜 범위

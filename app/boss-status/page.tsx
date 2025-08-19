@@ -2,14 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Character } from "../../types";
 import { BossSelection } from "../../types/boss";
 import BossSelectionModal from "../../components/BossSelectionModal";
 import AddBossCharacterModal from "../../components/AddBossCharacterModal";
 import DesireDropModal from "../../components/DesireDropModal";
-import { mockAllCharacters } from "../../data/mockCharacters";
+
 import { useAuth } from "../../store/authStore";
 import { getCharacterList } from "../../services/characterService";
 import { getBossListFromAPI, getBossDesireItems } from "../../services/bossService";
@@ -34,40 +34,64 @@ export default function BossStatusPage() {
   // 프리셋은 모달에서만 로드
 
   // 캐릭터 목록 조회
-  useEffect(() => {
-    const fetchCharacters = async () => {
-      if (!isLoggedIn) return;
+  const fetchCharacters = useCallback(async () => {
+    if (!isLoggedIn) return;
+    
+    try {
+      setIsLoadingCharacters(true);
+      const characters = await getCharacterList();
       
-      try {
-        setIsLoadingCharacters(true);
-        const characters = await getCharacterList();
+      // 캐릭터 목록 정렬: 본캐 최상위, 그 다음 레벨 내림차순
+      const sortedCharacters = [...characters].sort((a, b) => {
+        // 본캐인 경우 최상위로
+        if (a.isMainCharacter && !b.isMainCharacter) return -1;
+        if (!a.isMainCharacter && b.isMainCharacter) return 1;
         
-        // 캐릭터 목록 정렬: 본캐 최상위, 그 다음 레벨 내림차순
-        const sortedCharacters = [...characters].sort((a, b) => {
-          // 본캐인 경우 최상위로
-          if (a.isMainCharacter && !b.isMainCharacter) return -1;
-          if (!a.isMainCharacter && b.isMainCharacter) return 1;
-          
-          // 본캐가 아닌 경우 레벨 내림차순
-          return b.level - a.level;
-        });
-        
-        setBossCharacters(sortedCharacters);
-        
-        // 첫 번째 캐릭터나 본캐를 기본 선택
-        if (sortedCharacters.length > 0) {
-          const mainCharacter = sortedCharacters.find(char => char.isMainCharacter);
-          setSelectedCharacterId(mainCharacter?.id || sortedCharacters[0].id);
-        }
-      } catch (error) {
-        console.error('캐릭터 목록 조회 실패:', error);
-      } finally {
-        setIsLoadingCharacters(false);
+        // 본캐가 아닌 경우 레벨 내림차순
+        return b.level - a.level;
+      });
+      
+      setBossCharacters(sortedCharacters);
+      
+      // 첫 번째 캐릭터나 본캐를 기본 선택
+      if (sortedCharacters.length > 0) {
+        const mainCharacter = sortedCharacters.find(char => char.isMainCharacter);
+        setSelectedCharacterId(mainCharacter?.id || sortedCharacters[0].id);
       }
-    };
-
-    fetchCharacters();
+    } catch (error) {
+      console.error('캐릭터 목록 조회 실패:', error);
+    } finally {
+      setIsLoadingCharacters(false);
+    }
   }, [isLoggedIn]);
+
+  // 캐릭터 새로고침 (쿨타임 적용)
+  const handleRefreshCharacters = useCallback(async () => {
+    // 현재 쿨타임 상태 확인
+    const currentCooldownEndTime = localStorage.getItem('characterRefreshCooldown');
+    if (currentCooldownEndTime && Date.now() < parseInt(currentCooldownEndTime)) {
+      return; // 쿨타임 중이면 실행하지 않음
+    }
+
+    try {
+      await fetchCharacters();
+      
+      // 새로고침 성공 후 1분 쿨타임 설정
+      const newCooldownEndTime = Date.now() + 60 * 1000; // 60초
+      setCooldownEndTime(newCooldownEndTime);
+      localStorage.setItem('characterRefreshCooldown', newCooldownEndTime.toString());
+      
+    } catch {
+      // 에러 발생 시에도 쿨타임 적용 (API 호출은 했으므로)
+      const newCooldownEndTime = Date.now() + 60 * 1000;
+      setCooldownEndTime(newCooldownEndTime);
+      localStorage.setItem('characterRefreshCooldown', newCooldownEndTime.toString());
+    }
+  }, [fetchCharacters]);
+
+  useEffect(() => {
+    fetchCharacters();
+  }, [fetchCharacters]);
 
   // API 보스 데이터 로드 (BossSelectionModal과 동일한 로직)
   useEffect(() => {
@@ -216,12 +240,48 @@ export default function BossStatusPage() {
   const [bossCharacters, setBossCharacters] = useState<Character[]>([]);
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>("1");
+  const [cooldownEndTime, setCooldownEndTime] = useState<number | null>(null);
+  const [remainingTime, setRemainingTime] = useState(0);
   const [dateRange] = useState({
     startDate: "2025.06.05",
     endDate: "2025.06.11"
   });
   // 서버 필터링 상태
   const [selectedServer, setSelectedServer] = useState<string>('전체');
+
+  // 쿨타임 상태 복원 (페이지 로드 시)
+  useEffect(() => {
+    const savedCooldownEndTime = localStorage.getItem('characterRefreshCooldown');
+    if (savedCooldownEndTime) {
+      const endTime = parseInt(savedCooldownEndTime);
+      if (endTime > Date.now()) {
+        setCooldownEndTime(endTime);
+      } else {
+        localStorage.removeItem('characterRefreshCooldown');
+      }
+    }
+  }, []);
+
+  // 쿨타임 타이머 업데이트
+  useEffect(() => {
+    if (!cooldownEndTime) return;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, cooldownEndTime - now);
+      setRemainingTime(remaining);
+      
+      if (remaining === 0) {
+        setCooldownEndTime(null);
+        localStorage.removeItem('characterRefreshCooldown');
+      }
+    };
+
+    updateTimer(); // 즉시 실행
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [cooldownEndTime]);
 
   // 서버 변경 핸들러 - 선택된 캐릭터가 필터에서 제외되면 자동으로 다른 캐릭터 선택
   const handleServerChange = (server: string) => {
@@ -308,7 +368,8 @@ export default function BossStatusPage() {
           selectedDifficulty,
           partySize: 1,
           isGoldDrop: false,
-          desireDropItems: []
+          desireDropItems: [],
+          isCleared: false
         };
       }).filter(Boolean) as BossSelection[];
 
@@ -422,12 +483,27 @@ export default function BossStatusPage() {
     setCurrentDesireDropBoss(null);
   };
 
+  // 보스 클리어 상태 토글 함수
+  const handleBossClearToggle = (bossId: string) => {
+    if (!selectedCharacterId) return;
+
+    const currentSelections = characterBossSelections[selectedCharacterId] || [];
+    
+    setCharacterBossSelections(prev => ({
+      ...prev,
+      [selectedCharacterId]: currentSelections.map(sel =>
+        sel.bossId === bossId 
+          ? { ...sel, isCleared: !sel.isCleared }
+          : sel
+      )
+    }));
+  };
+
   // 프리셋 관련 로직 제거 (모달에서 처리)
 
   // 캐릭터 추가 함수
-  const handleAddCharacters = (characterIds: string[]) => {
-    const charactersToAdd = mockAllCharacters.filter(char => characterIds.includes(char.id));
-    setBossCharacters(prev => [...prev, ...charactersToAdd]);
+  const handleAddCharacters = (characters: Character[]) => {
+    setBossCharacters(prev => [...prev, ...characters]);
   };
 
   // 캐릭터 삭제 함수
@@ -466,15 +542,19 @@ export default function BossStatusPage() {
 
 
 
-  // 필터링된 캐릭터들의 총합 계산 - 결정석 + 물욕템
+  // 필터링된 캐릭터들의 총합 계산 - 클리어된 보스만 포함
   const filteredTotalBossCount = filteredCharacters.reduce((sum, character) => {
     const selections = characterBossSelections[character.id] || [];
-    return sum + selections.length;
+    const clearedBosses = selections.filter(selection => selection.isCleared);
+    return sum + clearedBosses.length;
   }, 0);
   
   const filteredTotalExpectedMeso = filteredCharacters.reduce((sum, character) => {
     const selections = characterBossSelections[character.id] || [];
     const characterTotal = selections.reduce((charSum, selection) => {
+      // 클리어되지 않은 보스는 총계에서 제외
+      if (!selection.isCleared) return charSum;
+      
       const boss = allBosses.find(b => b.id === selection.bossId);
       const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
       const mesoPerPlayer = difficultyInfo?.expectedMeso || 0;
@@ -506,26 +586,31 @@ export default function BossStatusPage() {
                   height={32}
                   className="rounded-lg"
                 />
-                <span className="text-xl font-bold text-orange-500">메요일조아</span>
+                <span className="text-xl font-bold" style={{ color: '#FF9100' }}>메요일조아</span>
               </Link>
 
               {/* Navigation */}
               <nav className="flex items-center gap-8">
               <Link 
                 href="/boss-status" 
-                className="text-orange-500 font-medium border-b-2 border-orange-500 pb-1"
+                className="font-medium border-b-2 pb-1"
+                style={{ color: '#FF9100', borderColor: '#FF9100' }}
               >
                 보돌 현황
               </Link>
               <Link 
                 href="/boss-history" 
-                className="text-gray-500 hover:text-orange-500 transition-colors"
+                className="text-gray-500 transition-colors"
+                onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
               >
                 보돌 히스토리
               </Link>
               <Link 
                 href="/item-history" 
-                className="text-gray-500 hover:text-orange-500 transition-colors"
+                className="text-gray-500 transition-colors"
+                onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
               >
                 물욕템 히스토리
               </Link>
@@ -537,12 +622,19 @@ export default function BossStatusPage() {
               <span className="text-sm text-gray-600">
                 {mainCharacterName || '사용자'}님
               </span>
-              <Link href="/settings" className="text-gray-600 hover:text-orange-500 transition-colors">
+              <Link 
+                href="/settings" 
+                className="text-gray-600 transition-colors"
+                onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#4B5563'}
+              >
                 설정
               </Link>
               <button 
                 onClick={logout}
-                className="text-gray-600 hover:text-orange-500 transition-colors"
+                className="text-gray-600 transition-colors"
+                onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#4B5563'}
               >
                 로그아웃
               </button>
@@ -597,14 +689,45 @@ export default function BossStatusPage() {
             <div className="bg-white rounded-lg border border-gray-200 p-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">캐릭터 목록</h3>
-                <button 
-                  onClick={() => setIsAddCharacterModalOpen(true)}
-                  className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors"
-                >
-                  <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* 새로고침 버튼 */}
+                  <button 
+                    onClick={handleRefreshCharacters}
+                    disabled={isLoadingCharacters || Boolean(cooldownEndTime && Date.now() < cooldownEndTime)}
+                    className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors disabled:opacity-50"
+                    title={
+                      cooldownEndTime && Date.now() < cooldownEndTime 
+                        ? `새로고침 쿨타임: ${Math.ceil(remainingTime / 1000)}초 남음`
+                        : "캐릭터 목록 새로고침"
+                    }
+                  >
+                    {cooldownEndTime && Date.now() < cooldownEndTime ? (
+                      <div className="text-xs font-bold" style={{ color: '#FF9100' }}>
+                        {Math.ceil(remainingTime / 1000)}
+                      </div>
+                    ) : (
+                      <svg 
+                        className={`w-4 h-4 text-gray-600 ${isLoadingCharacters ? 'animate-spin' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  {/* 캐릭터 추가 버튼 */}
+                  <button 
+                    onClick={() => setIsAddCharacterModalOpen(true)}
+                    className="w-8 h-8 bg-gray-100 hover:bg-gray-200 rounded-lg flex items-center justify-center transition-colors"
+                    title="캐릭터 추가"
+                  >
+                    <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3 h-[calc(100vh-350px)] overflow-y-auto overflow-x-visible pr-2">
@@ -636,7 +759,10 @@ export default function BossStatusPage() {
                           e.stopPropagation(); // 캐릭터 선택 이벤트 방지
                           handleRemoveCharacter(character.id);
                         }}
-                        className="absolute top-1 right-1 w-6 h-6 bg-gray-400 hover:bg-red-500 text-white rounded-full flex items-center justify-center transition-colors z-10 border-2 border-white shadow-sm"
+                        className="absolute top-1 right-1 w-6 h-6 bg-gray-400 text-white rounded-full flex items-center justify-center transition-colors z-10 border-2 border-white shadow-sm"
+                        style={{ backgroundColor: '#9CA3AF' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#9CA3AF'}
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -660,7 +786,7 @@ export default function BossStatusPage() {
                           <span className="font-medium text-gray-900 truncate flex-shrink">{character.name}</span>
                           <span className="text-xs text-gray-500 flex-shrink-0">{character.server}</span>
                           {character.isMainCharacter && (
-                            <span className="px-2 py-1 bg-orange-500 text-white text-xs rounded-full font-medium flex-shrink-0">
+                            <span className="px-2 py-1 text-white text-xs rounded-full font-medium flex-shrink-0" style={{ backgroundColor: '#FF9100' }}>
                               본캐
                             </span>
                           )}
@@ -683,7 +809,11 @@ export default function BossStatusPage() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">보스 목록</h3>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span>전체 보스 개수</span>
+                  <span>클리어된 보스</span>
+                  <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs">
+                    {selectedBossSelections.filter(selection => selection.isCleared).length}
+                  </span>
+                  <span>/</span>
                   <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs">
                     {selectedBossSelections.length}
                   </span>
@@ -722,7 +852,19 @@ export default function BossStatusPage() {
                       if (!boss || !difficultyInfo) return null;
                       
                       return (
-                        <div key={selection.bossId} className="bg-white border border-gray-200 rounded-2xl p-3 relative">
+                        <div 
+                          key={selection.bossId} 
+                          className={`border border-gray-200 rounded-2xl p-3 relative cursor-pointer transition-all duration-200 ${
+                            selection.isCleared 
+                              ? 'shadow-md' 
+                              : 'bg-white hover:shadow-sm'
+                          }`}
+                          style={selection.isCleared ? { 
+                            backgroundColor: 'rgba(255, 179, 102, 0.8)',
+                            borderColor: '#FF9100'
+                          } : {}}
+                          onClick={() => handleBossClearToggle(selection.bossId)}
+                        >
                           <div className="flex items-center gap-4">
                             {/* 보스 이미지 */}
                             <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
@@ -738,15 +880,25 @@ export default function BossStatusPage() {
                             {/* 보스 정보 섹션 */}
                             <div className="flex-1">
                               {/* 보스 이름 */}
-                              <h4 className="text-xl font-bold text-gray-900 mb-2">{boss.name}</h4>
+                              <h4 className={`text-xl font-bold mb-2 ${
+                                selection.isCleared ? 'text-gray-800' : 'text-gray-900'
+                              }`}>{boss.name}</h4>
                               
                                                             {/* 난이도 컨트롤 + 가격/결정석 */}
                               <div className="flex items-center mb-2">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-orange-500">난이도</span>
+                                  <span 
+                                    className="text-sm font-medium" 
+                                    style={{ color: selection.isCleared ? '#8B4513' : '#FF9100' }}
+                                  >
+                                    난이도
+                                  </span>
                                   <div className="flex items-center gap-2">
                                     <button 
-                                      onClick={() => handleDifficultyChange(selection.bossId, 'prev')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDifficultyChange(selection.bossId, 'prev');
+                                      }}
                                       className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
                                     >
                                       &lt;
@@ -765,7 +917,10 @@ export default function BossStatusPage() {
                                       />
                                     </div>
                                     <button 
-                                      onClick={() => handleDifficultyChange(selection.bossId, 'next')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDifficultyChange(selection.bossId, 'next');
+                                      }}
                                       className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
                                     >
                                       &gt;
@@ -773,10 +928,19 @@ export default function BossStatusPage() {
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-3 ml-auto mr-2">
-                                  <span className="text-base font-medium text-orange-500">가격</span>
+                                  <span 
+                                    className="text-base font-medium" 
+                                    style={{ color: selection.isCleared ? '#8B4513' : '#FF9100' }}
+                                  >
+                                    가격
+                                  </span>
                                   <div className="flex items-center gap-1">
-                                    <span className="text-sm text-gray-600">결정석</span>
-                                    <span className="text-sm font-bold text-gray-900 w-[120px] text-right">{formatMeso(difficultyInfo.expectedMeso / selection.partySize)}</span>
+                                    <span className={`text-sm ${
+                                      selection.isCleared ? 'text-gray-700' : 'text-gray-600'
+                                    }`}>결정석</span>
+                                    <span className={`text-sm font-bold w-[120px] text-right ${
+                                      selection.isCleared ? 'text-gray-800' : 'text-gray-900'
+                                    }`}>{formatMeso(difficultyInfo.expectedMeso / selection.partySize)}</span>
                                   </div>
                                 </div>
                               </div>
@@ -784,16 +948,37 @@ export default function BossStatusPage() {
                               {/* 파티원 컨트롤 + 물욕템 */}
                               <div className="flex items-center">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium text-orange-500">파티원</span>
+                                  <span 
+                                    className="text-sm font-medium" 
+                                    style={{ color: selection.isCleared ? '#8B4513' : '#FF9100' }}
+                                  >
+                                    파티원
+                                  </span>
                                   <div className="flex items-center gap-2">
                                     <button 
-                                      onClick={() => handlePartySizeChange(selection.bossId, 'prev')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePartySizeChange(selection.bossId, 'prev');
+                                      }}
                                       disabled={selection.partySize <= 1}
                                       className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
                                         selection.partySize <= 1 
                                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                          : 'bg-orange-500 text-white hover:bg-orange-600'
+                                          : 'text-white'
                                       }`}
+                                      style={selection.partySize > 1 ? { 
+                                        backgroundColor: '#FF9100'
+                                      } : {}}
+                                      onMouseEnter={(e) => {
+                                        if (selection.partySize > 1) {
+                                          e.currentTarget.style.backgroundColor = '#E68200';
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (selection.partySize > 1) {
+                                          e.currentTarget.style.backgroundColor = '#FF9100';
+                                        }
+                                      }}
                                     >
                                       &lt;
                                     </button>
@@ -803,21 +988,41 @@ export default function BossStatusPage() {
                                       </span>
                                     </div>
                                     <button 
-                                      onClick={() => handlePartySizeChange(selection.bossId, 'next')}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handlePartySizeChange(selection.bossId, 'next');
+                                      }}
                                       disabled={selection.partySize >= 6}
                                       className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
                                         selection.partySize >= 6 
                                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-                                          : 'bg-orange-500 text-white hover:bg-orange-600'
+                                          : 'text-white'
                                       }`}
+                                      style={selection.partySize < 6 ? { 
+                                        backgroundColor: '#FF9100'
+                                      } : {}}
+                                      onMouseEnter={(e) => {
+                                        if (selection.partySize < 6) {
+                                          e.currentTarget.style.backgroundColor = '#E68200';
+                                        }
+                                      }}
+                                      onMouseLeave={(e) => {
+                                        if (selection.partySize < 6) {
+                                          e.currentTarget.style.backgroundColor = '#FF9100';
+                                        }
+                                      }}
                                     >
                                       &gt;
                                     </button>
                                   </div>
                                 </div>
                                                                                                   <div className="flex items-center gap-1 ml-auto mr-2">
-                                  <span className="text-sm text-gray-600">물욕템</span>
-                                  <span className="text-sm font-bold text-gray-900 w-[120px] text-right">
+                                  <span className={`text-sm ${
+                                    selection.isCleared ? 'text-gray-700' : 'text-gray-600'
+                                  }`}>물욕템</span>
+                                  <span className={`text-sm font-bold w-[120px] text-right ${
+                                    selection.isCleared ? 'text-gray-800' : 'text-gray-900'
+                                  }`}>
                                     {selection.desireDropItems.length > 0
                                       ? formatMeso(selection.desireDropItems.reduce((sum, item) => sum + item.price, 0) / selection.partySize) 
                                       : '-'}
@@ -837,9 +1042,26 @@ export default function BossStatusPage() {
                               }}
                               className={`absolute top-4 right-4 px-3 py-1 text-xs rounded-lg font-medium transition-colors ${
                                 selection.isGoldDrop 
-                                  ? 'bg-orange-500 text-white' 
-                                  : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                                  ? 'text-white' 
+                                  : ''
                               }`}
+                              style={selection.isGoldDrop 
+                                ? { backgroundColor: '#FF9100' }
+                                : { 
+                                    backgroundColor: '#FFF3E0', 
+                                    color: '#FF9100'
+                                  }
+                              }
+                              onMouseEnter={(e) => {
+                                if (!selection.isGoldDrop) {
+                                  e.currentTarget.style.backgroundColor = '#FFE0B3';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!selection.isGoldDrop) {
+                                  e.currentTarget.style.backgroundColor = '#FFF3E0';
+                                }
+                              }}
                             >
                               물욕템 체크
                             </button>
@@ -873,7 +1095,10 @@ export default function BossStatusPage() {
                         console.log('Opening modal (empty state) with:', { selectedCharacterId, allBossesLength: allBosses.length });
                         setIsBossModalOpen(true);
                       }}
-                      className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                      className="px-4 py-2 text-white rounded-lg transition-colors"
+                      style={{ backgroundColor: '#FF9100' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
                     >
                       보스 선택하기
                     </button>
@@ -891,10 +1116,18 @@ export default function BossStatusPage() {
           {/* Right Sidebar - Summary */}
           <div className="col-span-3">
             <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <h3 className="text-lg font-semibold text-orange-500 mb-4">총계</h3>
+              <h3 className="text-lg font-semibold mb-4" style={{ color: '#FF9100' }}>총계</h3>
               
               {/* 총계 하단 버튼 - 최상부 고정 */}
-              <button className="w-full py-2 mb-4 border border-orange-500 text-orange-500 rounded-lg text-sm font-medium hover:bg-orange-50 transition-colors">
+              <button 
+                className="w-full py-2 mb-4 border rounded-lg text-sm font-medium transition-colors"
+                style={{ 
+                  borderColor: '#FF9100', 
+                  color: '#FF9100' 
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFF3E0'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+              >
                 총 {filteredTotalBossCount}마리 {formatMeso(filteredTotalExpectedMeso)}
               </button>
               
@@ -902,7 +1135,8 @@ export default function BossStatusPage() {
                 {/* 캐릭터별 박스 */}
                 {filteredCharacters.map((character) => {
                   const characterSelections = characterBossSelections[character.id] || [];
-                  const characterMeso = characterSelections.reduce((sum, selection) => {
+                  const clearedSelections = characterSelections.filter(selection => selection.isCleared);
+                  const characterMeso = clearedSelections.reduce((sum, selection) => {
                     const boss = allBosses.find(b => b.id === selection.bossId);
                     const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
                     const mesoPerPlayer = difficultyInfo?.expectedMeso || 0;
@@ -938,7 +1172,7 @@ export default function BossStatusPage() {
                           <span className="text-gray-600">물욕템</span>
                           <span className="font-medium">
                             {(() => {
-                              const desireDropMeso = characterSelections.reduce((sum, selection) => {
+                              const desireDropMeso = clearedSelections.reduce((sum, selection) => {
                                 const itemsTotal = selection.desireDropItems.reduce((itemSum, item) => itemSum + item.price, 0);
                                 return sum + (itemsTotal / selection.partySize);
                               }, 0);
@@ -950,12 +1184,12 @@ export default function BossStatusPage() {
 
                       {/* 큰 숫자 표시 */}
                       <div className="text-center">
-                        <div className="flex items-center justify-center gap-1 text-base font-bold text-orange-500">
-                          <span>{characterSelections.length}마리</span>
+                        <div className="flex items-center justify-center gap-1 text-base font-bold" style={{ color: '#FF9100' }}>
+                          <span>{clearedSelections.length}마리</span>
                           <span className="text-gray-300">|</span>
                           <span>
                             {(() => {
-                              const desireDropMeso = characterSelections.reduce((sum, selection) => {
+                              const desireDropMeso = clearedSelections.reduce((sum, selection) => {
                                 const itemsTotal = selection.desireDropItems.reduce((itemSum, item) => itemSum + item.price, 0);
                                 return sum + (itemsTotal / selection.partySize);
                               }, 0);
@@ -975,7 +1209,15 @@ export default function BossStatusPage() {
 
         {/* Bottom Action Buttons */}
         <div className="flex items-center justify-between mt-8">
-          <button className="px-6 py-3 bg-white border-2 border-orange-500 text-orange-500 rounded-lg hover:bg-orange-50 transition-colors font-medium">
+          <button 
+            className="px-6 py-3 bg-white border-2 rounded-lg transition-colors font-medium"
+            style={{ 
+              borderColor: '#FF9100', 
+              color: '#FF9100' 
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFF3E0'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+          >
             추천 최적 보돌 산출
           </button>
 
@@ -989,7 +1231,12 @@ export default function BossStatusPage() {
             추천 최적 보돌 산출 기능을 사용할 수 없습니다.
             </p>
           </div>
-            <button className="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+            <button 
+              className="px-6 py-3 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: '#FF9100' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
+            >
               이번 주 보돌 완료
             </button>
           </div>
@@ -1012,6 +1259,7 @@ export default function BossStatusPage() {
          isOpen={isAddCharacterModalOpen}
          onClose={() => setIsAddCharacterModalOpen(false)}
          currentBossCharacterIds={bossCharacters.map(char => char.id)}
+         currentBossCharacters={bossCharacters}
          onAddCharacters={handleAddCharacters}
        />
 

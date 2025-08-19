@@ -154,6 +154,8 @@ export default function BossSelectionModal({
               }
             });
           } catch (error) {
+            const bossNumericId = (apiBoss as unknown as { id?: number; bossId?: number }).id ?? 
+                                 (apiBoss as unknown as { id?: number; bossId?: number }).bossId;
             console.warn(`Failed to fetch desire items for boss ${apiBoss.bossName} (ID: ${bossNumericId}):`, error);
           }
         });
@@ -233,17 +235,7 @@ export default function BossSelectionModal({
     return 'normal';
   };
 
-  // 아이템명을 실제 파일명으로 매핑하는 함수
-  const mapItemNameToFileName = (itemName: string): string => {
-    // 파일명 불일치 수정을 위한 매핑 테이블
-    const fileNameMappings: Record<string, string> = {
-      // etherealArmorBox-kalos는 실제로는 etherealAmorBox-kalos.png
-      'etherealArmorBox-kalos': 'etherealAmorBox-kalos',
-      // 필요시 다른 매핑들도 추가
-    };
 
-    return fileNameMappings[itemName] || itemName;
-  };
 
   // 중복 선언 제거
   /* const transformApiBossesToUi = (apiList: BossResponse[]): Boss[] => {
@@ -438,8 +430,9 @@ export default function BossSelectionModal({
                     key={`preset-${presetId}-${preset.presetName}`}
                     onClick={() => handleSelectPreset(presetId)}
                     className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                      isSelected ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      isSelected ? 'text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
+                    style={isSelected ? { backgroundColor: '#FF9100' } : {}}
                   >
                     {preset.presetName}
                   </button>
@@ -452,7 +445,7 @@ export default function BossSelectionModal({
         <div className="p-6 max-h-[60vh] overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderColor: '#FF9100' }}></div>
               <span className="ml-3 text-gray-600">보스 목록을 불러오는 중...</span>
             </div>
           ) : weeklyBosses.length > 0 ? (
@@ -471,9 +464,13 @@ export default function BossSelectionModal({
                     onClick={() => handleBossToggle(boss.id)}
                     className={`relative p-4 border rounded-lg cursor-pointer transition-all ${
                       localSelectedBosses.includes(boss.id)
-                        ? 'border-orange-500 bg-orange-50'
+                        ? ''
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
+                    style={localSelectedBosses.includes(boss.id) ? {
+                      borderColor: '#FF9100',
+                      backgroundColor: 'rgba(255, 145, 0, 0.1)'
+                    } : {}}
                   >
                     <div className="flex items-start gap-4">
                       {/* Left column: Drops thumbnails */}
@@ -599,16 +596,22 @@ export default function BossSelectionModal({
                         {/* Entry requirement and meso */}
                         <div className="space-y-1 text-sm text-gray-600">
                           <div>입장 요구 레벨: {minRequiredLevel}</div>
-                          <div className="font-medium text-orange-600">예상 메소: {formatMeso(currentDifficulty.expectedMeso)}</div>
+                          <div className="font-medium" style={{ color: '#FF9100' }}>예상 메소: {formatMeso(currentDifficulty.expectedMeso)}</div>
                         </div>
                       </div>
 
                       {/* Checkbox (original position at right side) */}
-                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                        localSelectedBosses.includes(boss.id)
-                          ? 'border-orange-500 bg-orange-500'
-                          : 'border-gray-300'
-                      }`}>
+                      <div 
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                          localSelectedBosses.includes(boss.id)
+                            ? ''
+                            : 'border-gray-300'
+                        }`}
+                        style={localSelectedBosses.includes(boss.id) ? {
+                          borderColor: '#FF9100',
+                          backgroundColor: '#FF9100'
+                        } : {}}
+                      >
                         {localSelectedBosses.includes(boss.id) && (
                           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -638,7 +641,7 @@ export default function BossSelectionModal({
             <div className="text-sm text-gray-600">
                              선택된 보스: {localSelectedBosses.length}개
                {localSelectedBosses.length > 0 && (
-                 <span className="ml-2 text-orange-600 font-medium">
+                 <span className="ml-2 font-medium" style={{ color: '#FF9100' }}>
                    예상 총 메소: {formatMeso(
                      allBosses
                        .filter((boss: Boss) => localSelectedBosses.includes(boss.id))
@@ -662,7 +665,10 @@ export default function BossSelectionModal({
               </button>
               <button
                 onClick={handleSave}
-                className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                className="px-6 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: '#FF9100' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
               >
                 적용하기
               </button>

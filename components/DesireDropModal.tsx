@@ -190,7 +190,7 @@ export default function DesireDropModal({
                                   {item.ringInfo.fullName} (레벨 {item.ringInfo.level})
                                 </p>
                               )}
-                              <p className="text-sm font-bold text-orange-600">
+                              <p className="text-sm font-bold" style={{ color: '#FF9100' }}>
                                 {formatMeso(item.price)} 메소
                               </p>
                             </div>
@@ -206,8 +206,8 @@ export default function DesireDropModal({
                         </div>
                       );
                     })}
-                    <div className="p-3 bg-orange-50 rounded-lg">
-                      <p className="text-center font-bold text-orange-600">
+                    <div className="p-3 rounded-lg" style={{ backgroundColor: 'rgba(255, 145, 0, 0.1)' }}>
+                      <p className="text-center font-bold" style={{ color: '#FF9100' }}>
                         총 물욕템 가격: {formatMeso(getTotalPrice())} 메소
                       </p>
                     </div>
@@ -220,7 +220,15 @@ export default function DesireDropModal({
               {/* 물욕템 추가 버튼 */}
               <button
                 onClick={() => setStep('add')}
-                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
+                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 transition-colors"
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = '#FFB366';
+                  e.currentTarget.style.color = '#FF9100';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = '#D1D5DB';
+                  e.currentTarget.style.color = '#6B7280';
+                }}
               >
                 + 물욕템 추가
               </button>
@@ -243,7 +251,15 @@ export default function DesireDropModal({
                   <button
                     key={item.id}
                     onClick={() => handleItemSelect(item)}
-                    className="p-3 border border-gray-200 rounded-lg hover:border-orange-300 hover:bg-orange-50 transition-colors text-left"
+                    className="p-3 border border-gray-200 rounded-lg transition-colors text-left"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#FFB366';
+                      e.currentTarget.style.backgroundColor = 'rgba(255, 145, 0, 0.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = '#E5E7EB';
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       <Image
@@ -302,9 +318,13 @@ export default function DesireDropModal({
                     onClick={() => setSelectedRingIndex(index)}
                     className={`w-full p-4 border rounded-lg transition-colors ${
                       selectedRingIndex === index
-                        ? 'border-orange-500 bg-orange-50'
+                        ? ''
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
+                    style={selectedRingIndex === index ? {
+                      borderColor: '#FF9100',
+                      backgroundColor: 'rgba(255, 145, 0, 0.1)'
+                    } : {}}
                   >
                     <div className="flex items-center gap-4">
                       <Image
@@ -324,7 +344,10 @@ export default function DesireDropModal({
               </div>
               <button
                 onClick={() => setStep('price')}
-                className="w-full mt-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                className="w-full mt-4 py-2 text-white rounded-lg transition-colors"
+                style={{ backgroundColor: '#FF9100' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
               >
                 다음
               </button>
@@ -377,7 +400,16 @@ export default function DesireDropModal({
                     value={formatPrice(price)}
                     onChange={(e) => handlePriceChange(e.target.value)}
                     placeholder="예: 50000 (5억 메소)"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2"
+
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#FF9100';
+                      e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#D1D5DB';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                   />
                   {price && (
                     <p className="text-sm text-gray-600 mt-1">
@@ -388,7 +420,14 @@ export default function DesireDropModal({
                 <button
                   onClick={handleAddItem}
                   disabled={!price || parseInt(price.replace(/[^0-9]/g, '')) <= 0}
-                  className="w-full py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  className="w-full py-3 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  style={!price ? {} : { backgroundColor: '#FF9100' }}
+                  onMouseEnter={(e) => {
+                    if (price) e.currentTarget.style.backgroundColor = '#E68200';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (price) e.currentTarget.style.backgroundColor = '#FF9100';
+                  }}
                 >
                   물욕템 추가
                 </button>
@@ -408,7 +447,10 @@ export default function DesireDropModal({
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              className="px-6 py-2 text-white rounded-lg transition-colors"
+              style={{ backgroundColor: '#FF9100' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
             >
               저장
             </button>

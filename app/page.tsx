@@ -68,7 +68,7 @@ export default function Home() {
         <form className="space-y-6" onSubmit={handleSubmit}>
           {/* 아이디 입력 */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-orange-500 mb-2">
+            <label htmlFor="username" className="block text-sm font-medium mb-2" style={{ color: '#FF9100' }}>
               아이디
             </label>
             <input
@@ -78,13 +78,21 @@ export default function Home() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="본캐 닉네임을 입력해주세요. (예: 뱌꺄)"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 outline-none transition-colors"
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FF9100';
+                e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#D1D5DB';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           </div>
 
           {/* 비밀번호 입력 */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-orange-500 mb-2">
+            <label htmlFor="password" className="block text-sm font-medium mb-2" style={{ color: '#FF9100' }}>
               비밀번호
             </label>
             <input
@@ -94,7 +102,15 @@ export default function Home() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="비밀번호를 입력해주세요."
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 outline-none transition-colors"
+              onFocus={(e) => {
+                e.currentTarget.style.borderColor = '#FF9100';
+                e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.currentTarget.style.borderColor = '#D1D5DB';
+                e.currentTarget.style.boxShadow = 'none';
+              }}
             />
           </div>
 
@@ -122,11 +138,21 @@ export default function Home() {
         {/* 하단 링크 */}
         <div className="mt-6 text-center">
           <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-            <a href="/register" className="hover:text-orange-500 transition-colors">
+            <a 
+              href="/register" 
+              className="transition-colors"
+              onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+              onMouseLeave={(e) => e.currentTarget.style.color = ''}
+            >
               회원가입
             </a>
             <span>|</span>
-            <a href="/forgot-password" className="hover:text-orange-500 transition-colors">
+            <a 
+              href="/forgot-password" 
+              className="transition-colors"
+              onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+              onMouseLeave={(e) => e.currentTarget.style.color = ''}
+            >
               비밀번호 찾기
             </a>
           </div>
