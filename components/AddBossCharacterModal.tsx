@@ -2,9 +2,10 @@
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import Image from 'next/image';
-import { Character } from '../types';
+import { Character, CharacterBulkCreateRequest } from '../types';
 import nexonApiService from '../services/nexonApiService';
 import { TokenManager } from '../services/authService';
+import { registerCharacters } from '../services/characterService';
 
 interface AddBossCharacterModalProps {
   isOpen: boolean;
@@ -29,6 +30,7 @@ export default function AddBossCharacterModal({
   const [error, setError] = useState<string | null>(null);
   const [cooldownEndTime, setCooldownEndTime] = useState<number | null>(null);
   const [remainingTime, setRemainingTime] = useState(0);
+  const [isRegistering, setIsRegistering] = useState(false);
 
   // 쿨타임 상태 복원 (페이지 로드 시)
   useEffect(() => {
@@ -156,14 +158,79 @@ export default function AddBossCharacterModal({
   };
 
   // 선택 적용
-  const handleApplySelection = () => {
-    const selectedCharacters = allCharacters.filter(char => 
-      selectedCharacterIds.includes(char.id)
-    );
-    onAddCharacters(selectedCharacters);
-    setSelectedCharacterIds([]);
-    setSearchTerm('');
-    onClose();
+  const handleApplySelection = async () => {
+    if (selectedCharacterIds.length === 0) return;
+
+    setIsRegistering(true);
+    try {
+      const selectedCharacters = allCharacters.filter(char => 
+        selectedCharacterIds.includes(char.id)
+      );
+
+      // 사용자 ID 가져오기
+      const userId = TokenManager.getUserId();
+      if (!userId) {
+        throw new Error('사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+      }
+
+      // API 요청 데이터 구성
+      const request: CharacterBulkCreateRequest = {
+        userId: parseInt(userId),
+        characters: selectedCharacters.map(char => ({
+          characterName: char.name,
+          ocid: char.ocid,
+          isMain: char.isMainCharacter || false,
+          worldName: char.server,
+          characterClass: char.job,
+          characterLevel: char.level,
+          characterImage: char.image,
+          arcaneForce: char.arcaneForce || 0,
+          authenticForce: char.authenticForce || 0
+        }))
+      };
+
+      // 캐릭터 일괄 등록 API 호출
+      const response = await registerCharacters(request);
+      
+      console.log('캐릭터 등록 결과:', response);
+      
+      // 성공한 캐릭터들만 추가
+      if (response.data && response.data.successCount > 0) {
+        // 등록 응답에서 받은 DB ID를 포함하여 캐릭터 정보 업데이트
+        const savedCharacters = response.data.savedCharacters;
+        const updatedCharacters = selectedCharacters.map(char => {
+          const savedChar = savedCharacters.find(saved => saved.ocid === char.ocid);
+          if (savedChar) {
+            return {
+              ...char,
+              dbId: savedChar.id // 데이터베이스 실제 ID 설정
+            };
+          }
+          return char;
+        });
+        
+        // UI에 DB ID가 포함된 캐릭터들을 추가
+        onAddCharacters(updatedCharacters);
+        
+        // 성공 메시지
+        if (response.data.failureCount > 0) {
+          alert(`${response.data.successCount}개 캐릭터가 성공적으로 등록되었습니다.\n${response.data.failureCount}개 캐릭터는 등록에 실패했습니다.`);
+        } else {
+          alert(`${response.data.successCount}개 캐릭터가 성공적으로 등록되었습니다.`);
+        }
+      } else {
+        throw new Error('모든 캐릭터 등록에 실패했습니다.');
+      }
+
+      setSelectedCharacterIds([]);
+      setSearchTerm('');
+      onClose();
+    } catch (error) {
+      console.error('캐릭터 등록 실패:', error);
+      alert(error instanceof Error ? error.message : '캐릭터 등록에 실패했습니다.');
+    } finally {
+      setIsRegistering(false);
+    }
   };
 
   // 모달 닫기
@@ -334,28 +401,37 @@ export default function AddBossCharacterModal({
         {/* 선택 적용 버튼 */}
         <button
           onClick={handleApplySelection}
-          disabled={selectedCharacterIds.length === 0}
+          disabled={selectedCharacterIds.length === 0 || isRegistering}
           className={`w-full py-3 rounded-lg font-medium transition-colors ${
-            selectedCharacterIds.length > 0
+            selectedCharacterIds.length > 0 && !isRegistering
               ? 'text-white'
               : 'bg-gray-300 text-gray-500 cursor-not-allowed'
           }`}
-          style={selectedCharacterIds.length > 0 ? { 
+          style={selectedCharacterIds.length > 0 && !isRegistering ? { 
             backgroundColor: '#FF9100'
           } : {}}
           onMouseEnter={(e) => {
-            if (selectedCharacterIds.length > 0) {
+            if (selectedCharacterIds.length > 0 && !isRegistering) {
               e.currentTarget.style.backgroundColor = '#E68200';
             }
           }}
           onMouseLeave={(e) => {
-            if (selectedCharacterIds.length > 0) {
+            if (selectedCharacterIds.length > 0 && !isRegistering) {
               e.currentTarget.style.backgroundColor = '#FF9100';
             }
           }}
         >
-          선택 적용
-          {selectedCharacterIds.length > 0 && ` (${selectedCharacterIds.length})`}
+          {isRegistering ? (
+            <div className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              등록 중...
+            </div>
+          ) : (
+            <>
+              선택 적용
+              {selectedCharacterIds.length > 0 && ` (${selectedCharacterIds.length})`}
+            </>
+          )}
         </button>
       </div>
     </div>

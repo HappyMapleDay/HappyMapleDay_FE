@@ -99,9 +99,10 @@ export interface DesireItemResponse {
 }
 
 export interface BossResponse {
-  id: number;
+  bossId: number;
   bossName: string;
   bossNameEn?: string; // 예: blackmage
+  englishName?: string; // 과거 호환용
   difficulty: string; // 예: 익스트림
   difficultyEn?: string; // 예: extreme
   crystalPrice: number;
@@ -140,4 +141,53 @@ export interface ApiResponse<T> {
   status: string;
   message: string;
   data: T;
+}
+
+// 최적화 추천 관련 타입들
+export interface CharacterInput {
+  characterId: number;
+  worldName: string;
+  level: number;
+  arcaneForce: number;
+  authenticForce: number;
+  plannedBosses: PlannedBoss[];
+}
+
+export interface PlannedBoss {
+  bossId: number;
+  partySize: number;
+  alreadyCleared: boolean;
+}
+
+export interface OptimizeRecommendationRequest {
+  characters: CharacterInput[];
+}
+
+export interface SelectedBoss {
+  bossId: number;
+  bossName: string;
+  difficulty: string;
+  crystalPrice: number;
+  partySize: number;
+  forceIncluded: boolean;
+}
+
+export interface CharacterRecommendation {
+  characterId: number;
+  selectedBossCount: number;
+  crystalIncome: number;
+  bosses: SelectedBoss[]; // API 응답에서 'bosses'로 반환됨
+}
+
+export interface WorldRecommendation {
+  worldName: string;
+  worldBossCount: number;
+  worldCrystalIncome: number;
+  characters: CharacterRecommendation[];
+}
+
+export interface OptimizedRecommendationResponse {
+  worlds: WorldRecommendation[];
+  totalCrystalIncome: number;
+  totalBossCount: number;
 } 

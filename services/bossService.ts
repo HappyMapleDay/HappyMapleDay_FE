@@ -1,5 +1,5 @@
 import { Boss } from '../types';
-import type { BossResponse, BossPresetResponse, DesireItemResponse, ApiResponse } from '../types/boss';
+import type { BossResponse, BossPresetResponse, DesireItemResponse, ApiResponse, OptimizeRecommendationRequest, OptimizedRecommendationResponse } from '../types/boss';
 import { mockBosses, getRecommendedBosses } from '../data/mockBosses';
 
 // API 설정
@@ -315,6 +315,45 @@ class BossService {
       throw error;
     }
   }
+
+  // 백엔드 API: 보스 결정석 수익 최적화 추천
+  async getOptimizedRecommendation(request: OptimizeRecommendationRequest): Promise<OptimizedRecommendationResponse> {
+    if (USE_MOCK_DATA) {
+      // Mock 데이터 사용 (임시)
+      return new Promise((resolve) => {
+        setTimeout(() => resolve({
+          worlds: [],
+          totalCrystalIncome: 0,
+          totalBossCount: 0
+        }), 1000);
+      });
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/recommendation/optimize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request),
+      });
+      
+      if (!response.ok) {
+        throw new Error('보스 결정석 최적화 추천을 불러오는데 실패했습니다.');
+      }
+      
+      const apiData: ApiResponse<OptimizedRecommendationResponse> = await response.json();
+      
+      if (apiData.status === 'success' && apiData.data) {
+        return apiData.data;
+      } else {
+        throw new Error(apiData.message || '보스 결정석 최적화 추천 실패');
+      }
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  }
 }
 
 // 싱글톤 인스턴스
@@ -330,4 +369,5 @@ export const getWeeklyBosses = () => bossService.getBossesByResetType('weekly');
 // 백엔드 API 편의 함수들
 export const getBossListFromAPI = () => bossService.getBossListFromAPI();
 export const getBossPresetList = () => bossService.getBossPresetList();
-export const getBossDesireItems = (bossId: number) => bossService.getBossDesireItems(bossId); 
+export const getBossDesireItems = (bossId: number) => bossService.getBossDesireItems(bossId);
+export const getOptimizedRecommendation = (request: OptimizeRecommendationRequest) => bossService.getOptimizedRecommendation(request); 

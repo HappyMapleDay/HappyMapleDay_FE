@@ -83,6 +83,18 @@ interface NexonOCIDResponse {
   ocid: string;
 }
 
+// 능력치 정보 타입
+interface NexonCharacterStat {
+  date: string;
+  character_class: string;
+  final_stat: {
+    stat_name: string;
+    stat_value: string;
+  }[];
+}
+
+
+
 // 넥슨 OpenAPI 서비스 클래스
 class NexonApiService {
   private readonly baseUrl = 'https://open.api.nexon.com/maplestory/v1';
@@ -140,6 +152,9 @@ class NexonApiService {
           
 
 
+          // 아케인포스, 어센틱포스 정보 조회
+          const forceData = await this.getCharacterStat(char.ocid, apiKey);
+
           // 서버 아이콘 매핑
           const serverIcon = getServerIcon(basicData.world_name);
 
@@ -153,7 +168,9 @@ class NexonApiService {
             server: basicData.world_name,
             serverIcon: serverIcon,
             image: basicData.character_image,
-            isMainCharacter: false
+            isMainCharacter: false,
+            arcaneForce: forceData.arcaneForce,
+            authenticForce: forceData.authenticForce
           };
 
           return character;
@@ -258,6 +275,42 @@ class NexonApiService {
     } catch (error) {
       console.error('캐릭터 검증 실패:', error);
       return null;
+    }
+  }
+
+  // 캐릭터 능력치 정보 조회 (아케인포스, 어센틱포스 포함)
+  async getCharacterStat(ocid: string, apiKey: string): Promise<{ arcaneForce: number; authenticForce: number }> {
+    try {
+      const response = await fetch(`${this.baseUrl}/character/stat?ocid=${ocid}`, {
+        headers: {
+          'x-nxopen-api-key': apiKey,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        console.warn(`캐릭터 능력치 조회 실패: ${response.status}`);
+        return { arcaneForce: 0, authenticForce: 0 };
+      }
+
+      const statData: NexonCharacterStat = await response.json();
+      
+      // 아케인포스와 어센틱포스 찾기
+      let arcaneForce = 0;
+      let authenticForce = 0;
+      
+      statData.final_stat.forEach(stat => {
+        if (stat.stat_name === '아케인포스') {
+          arcaneForce = parseInt(stat.stat_value) || 0;
+        } else if (stat.stat_name === '어센틱포스') {
+          authenticForce = parseInt(stat.stat_value) || 0;
+        }
+      });
+
+      return { arcaneForce, authenticForce };
+    } catch (error) {
+      console.error('캐릭터 능력치 조회 실패:', error);
+      return { arcaneForce: 0, authenticForce: 0 };
     }
   }
 }

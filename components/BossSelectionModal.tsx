@@ -373,9 +373,12 @@ export default function BossSelectionModal({
   };
 
   const handleSave = () => {
+    console.log('=== BossSelectionModal handleSave 호출됨 ===');
     console.log('Saving with bosses:', localSelectedBosses);
     console.log('Difficulty settings:', difficultyIndexByBossId);
+    console.log('onBossesChange 함수 호출 중...');
     onBossesChange(localSelectedBosses, difficultyIndexByBossId);
+    console.log('onBossesChange 호출 완료, 모달 닫는 중...');
     onClose();
   };
 

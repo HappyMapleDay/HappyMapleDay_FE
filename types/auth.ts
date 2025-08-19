@@ -171,6 +171,8 @@ export interface CharacterResponse {
   characterClass?: string;
   characterLevel?: number;
   characterImage?: string;
+  arcaneForce?: number;
+  authenticForce?: number;
 }
 
 export interface CharacterListResponseDto {
@@ -189,6 +191,8 @@ export interface CharacterBulkCreateCharacter {
   characterClass: string;
   characterLevel: number;
   characterImage: string;
+  arcaneForce?: number;
+  authenticForce?: number;
 }
 
 export interface CharacterBulkCreateRequest {

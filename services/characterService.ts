@@ -98,7 +98,8 @@ class CharacterService {
     };
 
     return {
-      id: response.id.toString(),
+      id: response.id.toString(), // UI용 ID
+      dbId: response.id, // 데이터베이스 실제 ID
       ocid: response.ocid,
       name: response.characterName,
       server: response.worldName || "unknown",
@@ -106,7 +107,9 @@ class CharacterService {
       job: response.characterClass || "unknown",
       level: response.characterLevel || 0,
       image: response.characterImage || "/image/logo.png",
-      isMainCharacter: response.isMain
+      isMainCharacter: response.isMain,
+      arcaneForce: response.arcaneForce || 0,
+      authenticForce: response.authenticForce || 0
     };
   }
 
@@ -147,14 +150,16 @@ class CharacterService {
 
     const enhancedCharacters = await Promise.all(
       characters.map(async (character) => {
-        // 정보가 부족한 경우만 넥슨 API 호출
-                 if (character.server === 'unknown' || character.job === 'unknown' || character.level === 0) {
-           try {
-             const enhancedInfo = await nexonApiService.getCharacterBasic(character.ocid, apiKey);
+        let updatedCharacter = { ...character };
+        
+        // 기본 정보가 부족한 경우 넥슨 API 호출
+        if (character.server === 'unknown' || character.job === 'unknown' || character.level === 0) {
+          try {
+            const enhancedInfo = await nexonApiService.getCharacterBasic(character.ocid, apiKey);
             
             if (enhancedInfo) {
-              return {
-                ...character,
+              updatedCharacter = {
+                ...updatedCharacter,
                 server: enhancedInfo.server,
                 serverIcon: enhancedInfo.serverIcon,
                 job: enhancedInfo.job,
@@ -163,10 +168,25 @@ class CharacterService {
               };
             }
           } catch (error) {
-            console.error(`캐릭터 ${character.name} 정보 보완 실패:`, error);
+            console.error(`캐릭터 ${character.name} 기본 정보 보완 실패:`, error);
           }
         }
-        return character;
+        
+        // 아케인포스/어센틱포스가 없거나 0인 경우 넥슨 API에서 가져오기
+        if (!character.arcaneForce || !character.authenticForce || character.arcaneForce === 0 || character.authenticForce === 0) {
+          try {
+            const statInfo = await nexonApiService.getCharacterStat(character.ocid, apiKey);
+            updatedCharacter = {
+              ...updatedCharacter,
+              arcaneForce: statInfo.arcaneForce || character.arcaneForce || 0,
+              authenticForce: statInfo.authenticForce || character.authenticForce || 0
+            };
+          } catch (error) {
+            console.error(`캐릭터 ${character.name} 능력치 정보 보완 실패:`, error);
+          }
+        }
+        
+        return updatedCharacter;
       })
     );
 

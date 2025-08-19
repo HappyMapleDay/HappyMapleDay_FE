@@ -1,6 +1,7 @@
 // 캐릭터 관련 타입
 export interface Character {
-  id: string;
+  id: string; // 프론트엔드 내부 ID (UI용)
+  dbId?: number; // 데이터베이스 실제 ID (API용)
   ocid: string; // 넥슨 API 호출용
   name: string;
   server: string;
@@ -9,6 +10,8 @@ export interface Character {
   level: number;
   image: string;
   isMainCharacter?: boolean; // 본캐 여부
+  arcaneForce?: number; // 아케인 포스
+  authenticForce?: number; // 어센틱 포스
 }
 
 // 사용자 관련 타입
@@ -72,5 +75,8 @@ export interface AppActions {
 
 // Auth 관련 타입들 re-export
 export * from './auth';
+
+// 캐릭터 일괄 등록 관련 타입은 auth.ts에서 import
+export type { CharacterBulkCreateRequest, CharacterBulkCreateResponse, CharacterBulkCreateCharacter } from './auth';
 
 export type AppStore = AppState & AppActions; 

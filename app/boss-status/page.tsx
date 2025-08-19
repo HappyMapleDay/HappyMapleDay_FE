@@ -12,8 +12,8 @@ import DesireDropModal from "../../components/DesireDropModal";
 
 import { useAuth } from "../../store/authStore";
 import { getCharacterList } from "../../services/characterService";
-import { getBossListFromAPI, getBossDesireItems } from "../../services/bossService";
-import type { BossResponse, Boss } from "../../types/boss";
+import { getBossListFromAPI, getBossDesireItems, getOptimizedRecommendation } from "../../services/bossService";
+import type { BossResponse, Boss, OptimizeRecommendationRequest, OptimizedRecommendationResponse } from "../../types/boss";
 // 프리셋 로직은 모달 내부에서 처리
 
 export default function BossStatusPage() {
@@ -145,6 +145,7 @@ export default function BossStatusPage() {
 
         const uiBosses = transformApiBossesToUi(apiList);
         setAllBosses(uiBosses);
+        setApiBosses(apiList); // 원본 API 데이터도 저장
         
         // 각 보스별 난이도별 물욕템 존재 여부 확인
         const desireItemsCheck: Record<string, boolean> = {};
@@ -236,6 +237,48 @@ export default function BossStatusPage() {
     return 'weapon'; // 기본값
   };
 
+  // 디버깅용 플래그 (한 번만 로그 출력)
+  const [hasLoggedBossStructure, setHasLoggedBossStructure] = useState(false);
+
+  // API 보스 ID(숫자)를 UI 보스 ID(영문명)로 매핑
+  const getUiBossId = (apiBossId: number): string | undefined => {
+    const apiBoss = apiBosses.find(boss => boss.bossId === apiBossId);
+    return apiBoss?.bossNameEn || apiBoss?.englishName;
+  };
+
+  // UI 보스 ID(영문명)를 API 보스 ID(숫자)로 매핑
+  const getBossApiId = (uiBossId: string): number => {
+    // 첫 번째 호출에서만 구조 로그 출력
+    if (!hasLoggedBossStructure && apiBosses.length > 0) {
+      console.log('=== apiBosses 데이터 구조 분석 ===');
+      console.log('apiBosses 길이:', apiBosses.length);
+      console.log('첫 번째 객체 전체 구조:', JSON.stringify(apiBosses[0], null, 2));
+      console.log('첫 번째 객체의 모든 키:', Object.keys(apiBosses[0]));
+      setHasLoggedBossStructure(true);
+    }
+    
+    // 원본 API 데이터에서 영문명으로 찾기
+    const apiBoss = apiBosses.find(boss => {
+      const englishName = boss.bossNameEn || boss.englishName;
+      return englishName === uiBossId;
+    });
+    
+    if (apiBoss) {
+      // 첫 번째 매칭에서만 상세 로그 출력
+      if (!hasLoggedBossStructure) {
+        console.log('매칭된 보스 객체 구조:', JSON.stringify(apiBoss, null, 2));
+        console.log('ID 필드 확인: bossId =', apiBoss.bossId);
+      }
+      
+      console.log(`매칭: ${uiBossId} -> ${apiBoss.bossId}`);
+      return apiBoss.bossId;
+    }
+    
+    // 찾지 못한 경우 0 반환 (나중에 필터링됨)
+    console.warn(`API 보스 ID를 찾을 수 없음: ${uiBossId}`);
+    return 0;
+  };
+
   // 현재 보돌캐로 선택된 캐릭터들
   const [bossCharacters, setBossCharacters] = useState<Character[]>([]);
   const [isLoadingCharacters, setIsLoadingCharacters] = useState(true);
@@ -308,12 +351,17 @@ export default function BossStatusPage() {
   // 실제 API 보스 데이터 사용
   const [allBosses, setAllBosses] = useState<Boss[]>([]);
   const [isLoadingBosses, setIsLoadingBosses] = useState(true);
+  const [apiBosses, setApiBosses] = useState<BossResponse[]>([]); // 원본 API 보스 데이터
   
   // 물욕템 관련 상태
   const [isDesireDropModalOpen, setIsDesireDropModalOpen] = useState(false);
   const [currentDesireDropBoss, setCurrentDesireDropBoss] = useState<{ bossId: string; bossName: string; difficulty: string } | null>(null);
   const [bossDesireItems, setBossDesireItems] = useState<Record<string, Record<string, unknown[]>>>({});
   const [bossHasDesireItems, setBossHasDesireItems] = useState<Record<string, boolean>>({});
+
+  // 최적화 추천 관련 상태
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [optimizationResult, setOptimizationResult] = useState<OptimizedRecommendationResponse | null>(null);
 
   // 서버 목록 동적 생성 (캐릭터들의 서버만 포함)
   const availableServers = ['전체', ...Array.from(new Set(bossCharacters.map(char => char.server)))];
@@ -328,6 +376,7 @@ export default function BossStatusPage() {
 
   const handleBossesChange = (bossIds: string[], difficultySettings?: Record<string, number>) => {
     console.log('handleBossesChange called with:', { bossIds, difficultySettings, allBossesLength: allBosses.length });
+    console.log('selectedCharacterId:', selectedCharacterId);
     
     if (selectedCharacterId) {
       // 기존 선택 유지하면서 새로운 보스는 기본 설정으로 추가
@@ -374,10 +423,14 @@ export default function BossStatusPage() {
       }).filter(Boolean) as BossSelection[];
 
       console.log('Setting new selections:', newSelections);
-      setCharacterBossSelections(prev => ({
-        ...prev,
-        [selectedCharacterId]: newSelections
-      }));
+      setCharacterBossSelections(prev => {
+        const updated = {
+          ...prev,
+          [selectedCharacterId]: newSelections
+        };
+        console.log('Updated characterBossSelections:', updated);
+        return updated;
+      });
     }
   };
 
@@ -518,6 +571,145 @@ export default function BossStatusPage() {
       const newConfigs = { ...prev };
       delete newConfigs[characterId];
       return newConfigs;
+    });
+  };
+
+  // 최적화 추천 실행 함수
+  const handleOptimizeRecommendation = async () => {
+    if (!filteredCharacters.length) {
+      alert('캐릭터를 먼저 선택해 주세요.');
+      return;
+    }
+
+    // DB ID가 없는 캐릭터 확인
+    const charactersWithoutDbId = filteredCharacters.filter(char => !char.dbId);
+    if (charactersWithoutDbId.length > 0) {
+      const characterNames = charactersWithoutDbId.map(char => char.name).join(', ');
+      alert(`다음 캐릭터들은 데이터베이스에 등록되지 않아 최적화에서 제외됩니다:\n${characterNames}\n\n캐릭터를 다시 추가해 주세요.`);
+      return;
+    }
+
+    // 보스 선택 상태 전체 확인
+    console.log('=== 보스 선택 상태 디버깅 ===');
+    console.log('filteredCharacters:', filteredCharacters.map(c => ({ id: c.id, name: c.name, dbId: c.dbId })));
+    console.log('characterBossSelections keys:', Object.keys(characterBossSelections));
+    console.log('apiBosses 상태:', apiBosses.length, '개 보스 데이터');
+    filteredCharacters.forEach(char => {
+      const selections = characterBossSelections[char.id] || [];
+      console.log(`캐릭터 ${char.name} (${char.id}): ${selections.length}개 보스 선택됨`, selections.map(s => s.bossId));
+    });
+
+    setIsOptimizing(true);
+    try {
+      // API 요청 데이터 구성
+      const validCharacters = filteredCharacters.filter(char => char.dbId);
+      const request: OptimizeRecommendationRequest = {
+        characters: validCharacters.map(character => {
+          const selections = characterBossSelections[character.id] || [];
+          console.log(`캐릭터 ${character.name} (ID: ${character.id})의 선택된 보스:`, selections);
+          
+          return {
+            characterId: character.dbId!, // 실제 데이터베이스 ID 사용 (이미 필터링됨)
+            worldName: character.server,
+            level: character.level,
+            arcaneForce: character.arcaneForce || 0,
+            authenticForce: character.authenticForce || 0,
+            plannedBosses: selections.map(selection => {
+              const boss = allBosses.find(b => b.id === selection.bossId);
+              let bossApiId = 0;
+              
+              if (boss) {
+                // UI 보스 ID(영문명)를 API 보스 ID(숫자)로 매핑
+                // API 보스 데이터에서 영문명으로 찾아서 실제 ID 가져오기
+                const apiBoss = allBosses.find(b => b.id === selection.bossId);
+                if (apiBoss && apiBoss.id) {
+                  // allBosses는 이미 변환된 데이터이므로, 원본 API 데이터를 찾아야 함
+                  // 임시로 영문명을 숫자로 매핑하는 함수 사용
+                  bossApiId = getBossApiId(selection.bossId);
+                  console.log(`보스 ${boss.name}: UI ID = ${boss.id}, API ID = ${bossApiId}`);
+                } else {
+                  console.warn(`API 보스 ID를 찾을 수 없음: ${selection.bossId}`);
+                }
+              } else {
+                console.warn(`보스를 찾을 수 없음: ${selection.bossId}`);
+              }
+              
+              return {
+                bossId: bossApiId,
+                partySize: selection.partySize,
+                alreadyCleared: selection.isCleared
+              };
+            }).filter(boss => boss.bossId > 0) // 유효한 보스 ID만 포함
+          };
+        })
+      };
+
+      console.log('전체 characterBossSelections:', characterBossSelections);
+      console.log('최적화 요청 데이터:', JSON.stringify(request, null, 2));
+      
+      const result = await getOptimizedRecommendation(request);
+      setOptimizationResult(result);
+      
+      console.log('최적화 추천 결과:', result);
+    } catch (error) {
+      console.error('최적화 추천 실패:', error);
+      alert('최적화 추천을 불러오는데 실패했습니다.');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  // 최적화 추천 적용 함수 (제외된 보스들을 목록에서 제거)
+  const handleApplyOptimization = () => {
+    if (!optimizationResult) return;
+
+    // 최적화 결과를 현재 보스 선택에 적용
+    const newCharacterBossSelections = { ...characterBossSelections };
+    
+    optimizationResult.worlds.forEach(world => {
+      world.characters.forEach(characterRec => {
+        const characterId = characterRec.characterId.toString();
+        const character = bossCharacters.find(c => c.id === characterId);
+        if (!character) return;
+
+        const currentSelections = newCharacterBossSelections[characterId] || [];
+        
+        // 추천된 보스들만 남기고 나머지는 제거
+        const updatedSelections = currentSelections.filter(selection => {
+          const isRecommended = characterRec.bosses.some(recommended => {
+            const recommendedUiId = getUiBossId(recommended.bossId);
+            return recommendedUiId === selection.bossId;
+          });
+          return isRecommended;
+        });
+
+        newCharacterBossSelections[characterId] = updatedSelections;
+      });
+    });
+
+    setCharacterBossSelections(newCharacterBossSelections);
+    
+    // 최적화 결과 초기화 (다시 최적화를 실행할 수 있도록)
+    setOptimizationResult(null);
+    
+    alert('최적화가 적용되었습니다. 제외된 보스들이 목록에서 제거되었습니다.');
+  };
+
+  // 최적화 추천에서 제외된 보스인지 확인하는 함수
+  const isExcludedFromOptimization = (characterId: string, bossId: string): boolean => {
+    if (!optimizationResult) return false;
+    
+    const world = optimizationResult.worlds.find(w => 
+      w.characters.some(c => c.characterId.toString() === characterId)
+    );
+    if (!world) return false;
+
+    const characterRec = world.characters.find(c => c.characterId.toString() === characterId);
+    if (!characterRec) return false;
+
+    return !characterRec.bosses.some(recommended => {
+      const recommendedUiId = getUiBossId(recommended.bossId);
+      return recommendedUiId === bossId;
     });
   };
 
@@ -859,10 +1051,13 @@ export default function BossStatusPage() {
                               ? 'shadow-md' 
                               : 'bg-white hover:shadow-sm'
                           }`}
-                          style={selection.isCleared ? { 
-                            backgroundColor: 'rgba(255, 179, 102, 0.8)',
-                            borderColor: '#FF9100'
-                          } : {}}
+                          style={
+                            isExcludedFromOptimization(selectedCharacterId!, selection.bossId)
+                              ? { backgroundColor: 'rgba(128, 128, 128, 0.3)', borderColor: '#9CA3AF' }
+                              : selection.isCleared 
+                                ? { backgroundColor: 'rgba(255, 179, 102, 0.8)', borderColor: '#FF9100' }
+                                : {}
+                          }
                           onClick={() => handleBossClearToggle(selection.bossId)}
                         >
                           <div className="flex items-center gap-4">
@@ -1209,17 +1404,39 @@ export default function BossStatusPage() {
 
         {/* Bottom Action Buttons */}
         <div className="flex items-center justify-between mt-8">
-          <button 
-            className="px-6 py-3 bg-white border-2 rounded-lg transition-colors font-medium"
-            style={{ 
-              borderColor: '#FF9100', 
-              color: '#FF9100' 
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFF3E0'}
-            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
-          >
-            추천 최적 보돌 산출
-          </button>
+          {optimizationResult ? (
+            <button 
+              onClick={handleApplyOptimization}
+              className="px-6 py-3 text-white rounded-lg transition-colors font-medium"
+              style={{ backgroundColor: '#FF9100' }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
+            >
+              추천 최적 보돌 적용
+            </button>
+          ) : (
+            <button 
+              onClick={handleOptimizeRecommendation}
+              disabled={isOptimizing || !filteredCharacters.length}
+              className="px-6 py-3 bg-white border-2 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ 
+                borderColor: '#FF9100', 
+                color: '#FF9100' 
+              }}
+              onMouseEnter={(e) => {
+                if (!isOptimizing && filteredCharacters.length > 0) {
+                  e.currentTarget.style.backgroundColor = '#FFF3E0';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isOptimizing && filteredCharacters.length > 0) {
+                  e.currentTarget.style.backgroundColor = 'white';
+                }
+              }}
+            >
+              {isOptimizing ? '추천 최적 보돌 계산 중...' : '추천 최적 보돌 산출'}
+            </button>
+          )}
 
 
           <div className="flex gap-2">
