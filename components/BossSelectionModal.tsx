@@ -37,7 +37,7 @@ export default function BossSelectionModal({
     const group = new Map<string, Boss>();
     for (const item of apiList) {
       const en = item.bossNameEn || item.englishName || '';
-      const id = en || item.id.toString();
+      const id = en || item.bossId.toString();
       const difficulty = mapDifficulty(item.difficultyEn || item.difficulty);
       const existing = group.get(id);
       const difficultyInfo: Boss['difficulties'][number] = {
@@ -336,6 +336,13 @@ export default function BossSelectionModal({
     });
 
     if (toSelect.length > 0) {
+      // 12개 제한 확인
+      if (toSelect.length > 12) {
+        alert(`캐릭터당 12개까지의 보스만 돌 수 있습니다!\n선택된 프리셋에는 ${toSelect.length}개의 보스가 포함되어 있습니다.`);
+        setSelectedPresetId(null);
+        return;
+      }
+      
       // 보스 선택과 난이도 설정을 동시에 적용
       setLocalSelectedBosses(toSelect);
       setDifficultyIndexByBossId(newDifficultySettings);
@@ -365,11 +372,20 @@ export default function BossSelectionModal({
     });
 
   const handleBossToggle = (bossId: string) => {
-    setLocalSelectedBosses(prev => 
-      prev.includes(bossId) 
-        ? prev.filter(id => id !== bossId)
-        : [...prev, bossId]
-    );
+    setLocalSelectedBosses(prev => {
+      if (prev.includes(bossId)) {
+        // 보스 선택 해제
+        return prev.filter(id => id !== bossId);
+      } else {
+        // 보스 선택 추가
+        if (prev.length >= 12) {
+          // 12개 제한 경고
+          alert('캐릭터당 12개까지의 보스만 돌 수 있습니다!');
+          return prev; // 선택하지 않고 기존 상태 유지
+        }
+        return [...prev, bossId];
+      }
+    });
   };
 
   const handleSave = () => {
@@ -460,17 +476,21 @@ export default function BossSelectionModal({
                 const imageSrc = boss.image || '/image/logo.png';
                 const difficultyKey = currentDifficulty.difficulty;
                 const hasMultipleDifficulties = boss.difficulties.length > 1;
+                const isSelected = localSelectedBosses.includes(boss.id);
+                const canSelect = isSelected || localSelectedBosses.length < 12;
                 
                 return (
                   <div
                     key={boss.id}
-                    onClick={() => handleBossToggle(boss.id)}
-                    className={`relative p-4 border rounded-lg cursor-pointer transition-all ${
-                      localSelectedBosses.includes(boss.id)
-                        ? ''
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    onClick={() => canSelect ? handleBossToggle(boss.id) : null}
+                    className={`relative p-4 border rounded-lg transition-all ${
+                      !canSelect 
+                        ? 'cursor-not-allowed opacity-50 bg-gray-100 border-gray-200'
+                        : isSelected
+                          ? 'cursor-pointer'
+                          : 'cursor-pointer border-gray-200 hover:border-gray-300 bg-white'
                     }`}
-                    style={localSelectedBosses.includes(boss.id) ? {
+                    style={isSelected ? {
                       borderColor: '#FF9100',
                       backgroundColor: 'rgba(255, 145, 0, 0.1)'
                     } : {}}
@@ -567,8 +587,16 @@ export default function BossSelectionModal({
                         <div className="flex items-center gap-2 mb-2">
                           {hasMultipleDifficulties && (
                             <button
-                              onClick={(e) => { e.stopPropagation(); changeDifficulty(boss.id, 'prev', boss.difficulties.length); }}
-                              className="w-6 h-6 rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 flex items-center justify-center"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (canSelect) {
+                                  changeDifficulty(boss.id, 'prev', boss.difficulties.length);
+                                }
+                              }}
+                              disabled={!canSelect}
+                              className={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center ${
+                                canSelect ? 'text-gray-500 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
+                              }`}
                               aria-label="이전 난이도"
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -585,8 +613,16 @@ export default function BossSelectionModal({
                           />
                           {hasMultipleDifficulties && (
                             <button
-                              onClick={(e) => { e.stopPropagation(); changeDifficulty(boss.id, 'next', boss.difficulties.length); }}
-                              className="w-6 h-6 rounded-full border border-gray-300 text-gray-500 hover:bg-gray-100 flex items-center justify-center"
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                if (canSelect) {
+                                  changeDifficulty(boss.id, 'next', boss.difficulties.length);
+                                }
+                              }}
+                              disabled={!canSelect}
+                              className={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center ${
+                                canSelect ? 'text-gray-500 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
+                              }`}
                               aria-label="다음 난이도"
                             >
                               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -606,16 +642,18 @@ export default function BossSelectionModal({
                       {/* Checkbox (original position at right side) */}
                       <div 
                         className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          localSelectedBosses.includes(boss.id)
+                          isSelected
                             ? ''
-                            : 'border-gray-300'
+                            : canSelect
+                              ? 'border-gray-300'
+                              : 'border-gray-200'
                         }`}
-                        style={localSelectedBosses.includes(boss.id) ? {
+                        style={isSelected ? {
                           borderColor: '#FF9100',
                           backgroundColor: '#FF9100'
                         } : {}}
                       >
-                        {localSelectedBosses.includes(boss.id) && (
+                        {isSelected && (
                           <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
@@ -642,7 +680,7 @@ export default function BossSelectionModal({
         <div className="p-6 border-t border-gray-200">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-600">
-                             선택된 보스: {localSelectedBosses.length}개
+              선택된 보스: <span className={localSelectedBosses.length >= 12 ? 'font-bold text-red-600' : ''}>{localSelectedBosses.length}</span>/12개
                {localSelectedBosses.length > 0 && (
                  <span className="ml-2 font-medium" style={{ color: '#FF9100' }}>
                    예상 총 메소: {formatMeso(

@@ -107,7 +107,7 @@ export default function BossStatusPage() {
           const group = new Map<string, Boss>();
           for (const item of apiList) {
             const en = item.bossNameEn || item.englishName || '';
-            const id = en || item.id.toString();
+            const id = en || item.bossId.toString();
             const difficulty = mapDifficulty(item.difficultyEn || item.difficulty);
             const existing = group.get(id);
             const difficultyInfo: Boss['difficulties'][number] = {
@@ -240,35 +240,7 @@ export default function BossStatusPage() {
   // 디버깅용 플래그 (한 번만 로그 출력)
   const [hasLoggedBossStructure, setHasLoggedBossStructure] = useState(false);
 
-  // API 보스 ID(숫자)를 UI 보스 ID(영문명)로 매핑
-  const getUiBossId = (apiBossId: number): string | undefined => {
-    const apiBoss = apiBosses.find(boss => boss.bossId === apiBossId);
-    return apiBoss?.bossNameEn || apiBoss?.englishName;
-  };
-  
-  // API 보스 ID(숫자)로부터 UI에서 사용하는 보스 선택 정보를 찾기
-  const findBossSelection = (characterId: string, apiBossId: number): any => {
-    const selections = characterBossSelections[characterId] || [];
-    const apiBoss = apiBosses.find(boss => boss.bossId === apiBossId);
-    
-    if (!apiBoss) return null;
-    
-    // UI 보스 ID와 난이도로 매칭
-    return selections.find(selection => {
-      const uiBossId = apiBoss.bossNameEn || apiBoss.englishName;
-      const difficultyMap: Record<string, string> = {
-        '이지': 'easy',
-        '노말': 'normal', 
-        '하드': 'hard',
-        '카오스': 'chaos',
-        '익스트림': 'extreme'
-      };
-      
-      const uiDifficulty = difficultyMap[apiBoss.difficulty] || apiBoss.difficultyEn || 'normal';
-      
-      return selection.bossId === uiBossId && selection.selectedDifficulty === uiDifficulty;
-    });
-  };
+
 
   // UI 보스 ID(영문명)와 난이도를 API 보스 ID(숫자)로 매핑
   const getBossApiId = (uiBossId: string, difficulty: string): number => {
@@ -384,7 +356,61 @@ export default function BossStatusPage() {
   };
   const [isBossModalOpen, setIsBossModalOpen] = useState(false);
   const [isAddCharacterModalOpen, setIsAddCharacterModalOpen] = useState(false);
-  const [characterBossSelections, setCharacterBossSelections] = useState<Record<string, BossSelection[]>>({});
+  // localStorage 키 생성 (사용자별로 구분)
+  const getStorageKey = useCallback(() => `bossSelections_${mainCharacterName || 'default'}`, [mainCharacterName]);
+
+  // localStorage에서 보스 선택 상태 로드
+  const loadBossSelectionsFromStorage = (): Record<string, BossSelection[]> => {
+    try {
+      const stored = localStorage.getItem(getStorageKey());
+      if (stored) {
+        return JSON.parse(stored);
+      }
+    } catch (error) {
+      console.error('보스 선택 상태 로드 실패:', error);
+    }
+    return {};
+  };
+
+  // localStorage에 보스 선택 상태 저장
+  const saveBossSelectionsToStorage = (selections: Record<string, BossSelection[]>) => {
+    try {
+      localStorage.setItem(getStorageKey(), JSON.stringify(selections));
+    } catch (error) {
+      console.error('보스 선택 상태 저장 실패:', error);
+    }
+  };
+
+  const [characterBossSelections, setCharacterBossSelectionsState] = useState<Record<string, BossSelection[]>>(loadBossSelectionsFromStorage);
+
+  // localStorage 자동 저장이 포함된 setter 함수
+  const setCharacterBossSelections = (newSelections: Record<string, BossSelection[]> | ((prev: Record<string, BossSelection[]>) => Record<string, BossSelection[]>)) => {
+    if (typeof newSelections === 'function') {
+      setCharacterBossSelectionsState(prev => {
+        const updated = newSelections(prev);
+        saveBossSelectionsToStorage(updated);
+        return updated;
+      });
+    } else {
+      setCharacterBossSelectionsState(newSelections);
+      saveBossSelectionsToStorage(newSelections);
+    }
+  };
+
+  // 사용자가 변경되거나 로그인 상태가 변경될 때 저장된 보스 선택 상태 로드
+  useEffect(() => {
+    if (isLoggedIn && mainCharacterName) {
+      try {
+        const stored = localStorage.getItem(getStorageKey());
+        if (stored) {
+          const savedSelections = JSON.parse(stored);
+          setCharacterBossSelectionsState(savedSelections);
+        }
+      } catch (error) {
+        console.error('보스 선택 상태 로드 실패:', error);
+      }
+    }
+  }, [isLoggedIn, mainCharacterName, getStorageKey]);
   
   // 실제 API 보스 데이터 사용
   const [allBosses, setAllBosses] = useState<Boss[]>([]);
@@ -689,7 +715,7 @@ export default function BossStatusPage() {
     }
   };
 
-  // 최적화 추천 적용 함수 (제외된 보스들을 목록에서 제거)
+  // 최적화 추천 적용 함수 (API 응답의 모든 보스를 보스 목록에 적용)
   const handleApplyOptimization = () => {
     if (!optimizationResult) return;
 
@@ -702,19 +728,55 @@ export default function BossStatusPage() {
         const character = bossCharacters.find(c => c.id === characterId);
         if (!character) return;
 
-        const currentSelections = newCharacterBossSelections[characterId] || [];
-        
-        // 추천된 보스들만 남기고 나머지는 제거
-        const updatedSelections = currentSelections.filter(selection => {
-          const isRecommended = characterRec.bosses.some(recommended => {
-            const matchingSelection = findBossSelection(characterId, recommended.bossId);
-            return matchingSelection && 
-                   matchingSelection.bossId === selection.bossId && 
-                   matchingSelection.selectedDifficulty === selection.selectedDifficulty;
-          });
-          return isRecommended;
-        });
+        // API 응답의 추천 보스들을 모두 새로운 선택 목록으로 생성
+        const updatedSelections: BossSelection[] = characterRec.bosses.map(recommended => {
+          // API 보스 ID를 UI 보스 ID로 변환
+          const apiBoss = apiBosses.find(boss => boss.bossId === recommended.bossId);
+          if (!apiBoss) {
+            console.warn(`API 보스를 찾을 수 없음: ${recommended.bossId}`);
+            return null;
+          }
 
+          const uiBossId = apiBoss.bossNameEn || apiBoss.englishName;
+          if (!uiBossId) {
+            console.warn(`UI 보스 ID를 찾을 수 없음: ${recommended.bossId}`);
+            return null;
+          }
+
+          // 난이도 매핑 (API -> UI)
+          const difficultyMap: Record<string, string> = {
+            '이지': 'easy',
+            '노말': 'normal', 
+            '하드': 'hard',
+            '카오스': 'chaos',
+            '익스트림': 'extreme'
+          };
+          
+          const uiDifficulty = difficultyMap[apiBoss.difficulty] || apiBoss.difficultyEn || 'normal';
+
+          // UI 보스 정보 확인
+          const boss = allBosses.find(b => b.id === uiBossId);
+          if (!boss) {
+            console.warn(`UI 보스를 찾을 수 없음: ${uiBossId}`);
+            return null;
+          }
+
+          // 기존 선택이 있는 경우 일부 정보 유지 (물욕템 등)
+          const existingSelection = newCharacterBossSelections[characterId]?.find(sel => 
+            sel.bossId === uiBossId && sel.selectedDifficulty === uiDifficulty
+          );
+
+          return {
+            bossId: uiBossId,
+            selectedDifficulty: uiDifficulty,
+            partySize: 1, // 기본값 사용 (API 응답에 partySize 정보 없음)
+            isGoldDrop: existingSelection?.isGoldDrop || false,
+            desireDropItems: existingSelection?.desireDropItems || [],
+            isCleared: false // 최적화 적용 시에는 기본적으로 미클리어 상태로 설정
+          };
+        }).filter(Boolean) as BossSelection[];
+
+        console.log(`캐릭터 ${character.name}의 최적화 적용 결과:`, updatedSelections);
         newCharacterBossSelections[characterId] = updatedSelections;
       });
     });
@@ -724,7 +786,7 @@ export default function BossStatusPage() {
     // 최적화 결과 초기화 (다시 최적화를 실행할 수 있도록)
     setOptimizationResult(null);
     
-    alert('최적화가 적용되었습니다. 제외된 보스들이 목록에서 제거되었습니다.');
+    alert('최적화가 적용되었습니다. API 응답의 모든 보스가 목록에 추가되었습니다.');
   };
 
   // 최적화 추천에서 제외된 보스인지 확인하는 함수
@@ -745,10 +807,25 @@ export default function BossStatusPage() {
 
     // 추천된 보스 목록에서 현재 보스와 매칭되는 것이 있는지 확인
     return !characterRec.bosses.some(recommended => {
-      const matchingSelection = findBossSelection(characterId, recommended.bossId);
-      return matchingSelection && 
-             matchingSelection.bossId === currentSelection.bossId && 
-             matchingSelection.selectedDifficulty === currentSelection.selectedDifficulty;
+      // API 보스 ID를 UI 보스 ID로 변환하여 비교
+      const apiBoss = apiBosses.find(boss => boss.bossId === recommended.bossId);
+      if (!apiBoss) return false;
+
+      const uiBossId = apiBoss.bossNameEn || apiBoss.englishName;
+      if (!uiBossId) return false;
+
+      // 난이도 매핑 (API -> UI)
+      const difficultyMap: Record<string, string> = {
+        '이지': 'easy',
+        '노말': 'normal', 
+        '하드': 'hard',
+        '카오스': 'chaos',
+        '익스트림': 'extreme'
+      };
+      
+      const uiDifficulty = difficultyMap[apiBoss.difficulty] || apiBoss.difficultyEn || 'normal';
+
+      return uiBossId === currentSelection.bossId && uiDifficulty === currentSelection.selectedDifficulty;
     });
   };
 
