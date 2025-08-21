@@ -616,6 +616,27 @@ export default function BossStatusPage() {
     }));
   };
 
+  // 일괄 클리어 함수
+  const handleBulkClear = () => {
+    if (!selectedCharacterId) return;
+
+    const currentSelections = characterBossSelections[selectedCharacterId] || [];
+    const unclearedBosses = currentSelections.filter(sel => !sel.isCleared);
+    
+    if (unclearedBosses.length === 0) {
+      alert('모든 보스가 이미 클리어되었습니다.');
+      return;
+    }
+
+    const confirmMessage = `선택된 ${unclearedBosses.length}개의 보스를 모두 클리어 처리하시겠습니까?`;
+    if (confirm(confirmMessage)) {
+      setCharacterBossSelections(prev => ({
+        ...prev,
+        [selectedCharacterId]: currentSelections.map(sel => ({ ...sel, isCleared: true }))
+      }));
+    }
+  };
+
   // 프리셋 관련 로직 제거 (모달에서 처리)
 
   // 캐릭터 추가 함수
@@ -1117,6 +1138,25 @@ export default function BossStatusPage() {
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">보스 목록</h3>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
+                  {/* 일괄 클리어 버튼 */}
+                  {selectedCharacterId && selectedBossSelections.length > 0 && (
+                    <button
+                      onClick={handleBulkClear}
+                      disabled={selectedBossSelections.filter(sel => !sel.isCleared).length === 0}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                        selectedBossSelections.filter(sel => !sel.isCleared).length === 0
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                      }`}
+                      title={
+                        selectedBossSelections.filter(sel => !sel.isCleared).length === 0
+                          ? '모든 보스가 이미 클리어되었습니다'
+                          : `${selectedBossSelections.filter(sel => !sel.isCleared).length}개 보스 일괄 클리어`
+                      }
+                    >
+                      일괄 클리어
+                    </button>
+                  )}
                   <span>클리어된 보스</span>
                   <span className="w-6 h-6 bg-gray-100 rounded-full flex items-center justify-center text-xs">
                     {selectedBossSelections.filter(selection => selection.isCleared).length}
