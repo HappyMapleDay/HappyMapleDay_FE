@@ -11,7 +11,7 @@ export default function ForgotPassword() {
   const { resetPassword, isLoading, error, clearError } = useAuth();
   const [step, setStep] = useState<'verify' | 'reset'>('verify');
   const [username, setUsername] = useState("");
-  const [apiKey] = useState("test_api_key_9x7k2m4n8p1q5w");
+  const [apiKey, setApiKey] = useState("");
   const [temporaryPassword, setTemporaryPassword] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,9 +91,9 @@ export default function ForgotPassword() {
                   id="apiKey"
                   name="apiKey"
                   value={apiKey}
-                  readOnly
-                  placeholder="테스트용 API 키가 자동으로 설정됩니다."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="메이플스토리 API 키를 입력해주세요."
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
                 />
               </div>
 
