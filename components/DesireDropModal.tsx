@@ -14,6 +14,7 @@ interface AvailableDesireDropItem {
     level: number;
     name: string;
     fullName: string;
+    image?: string;
   }>;
 }
 
@@ -172,14 +173,29 @@ export default function DesireDropModal({
                       return (
                         <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center gap-3">
-                            <Image
+                            <img
+                              key={availableItem.image}
                               src={availableItem.image}
                               alt={availableItem.name}
                               width={40}
                               height={40}
                               className="rounded"
+                              style={{ display: 'block' }}
+                              onLoad={(e) => {
+                                console.log('이미지 로드 성공:', {
+                                  src: availableItem.image,
+                                  itemName: availableItem.name
+                                });
+                                const target = e.target as HTMLImageElement;
+                                target.style.opacity = '1';
+                              }}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
+                                console.error('이미지 로드 실패:', {
+                                  originalSrc: availableItem.image,
+                                  itemName: availableItem.name,
+                                  fallbackSrc: '/image/logo.png'
+                                });
                                 target.src = '/image/logo.png';
                               }}
                             />
@@ -187,7 +203,10 @@ export default function DesireDropModal({
                               <p className="font-medium">{availableItem.name}</p>
                               {item.ringInfo && (
                                 <p className="text-sm text-gray-600">
-                                  {item.ringInfo.fullName} (레벨 {item.ringInfo.level})
+                                  {item.ringInfo.fullName.includes('레벨') || item.ringInfo.fullName.includes('level') 
+                                    ? item.ringInfo.fullName 
+                                    : `${item.ringInfo.fullName} (레벨 ${item.ringInfo.level})`
+                                  }
                                 </p>
                               )}
                               <p className="text-sm font-bold" style={{ color: '#FF9100' }}>
@@ -262,7 +281,7 @@ export default function DesireDropModal({
                     }}
                   >
                     <div className="flex items-center gap-3">
-                      <Image
+                      <img
                         src={item.image}
                         alt={item.name}
                         width={40}
@@ -270,14 +289,16 @@ export default function DesireDropModal({
                         className="rounded flex-shrink-0"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
+                          console.error('물욕템 선택 이미지 로드 실패:', {
+                            originalSrc: item.image,
+                            itemName: item.name,
+                            fallbackSrc: '/image/logo.png'
+                          });
                           target.src = '/image/logo.png';
                         }}
                       />
                       <div className="min-w-0">
                         <p className="font-medium text-sm truncate">{item.name}</p>
-                        {item.isRingBox && (
-                          <p className="text-xs text-gray-500">반지상자</p>
-                        )}
                       </div>
                     </div>
                   </button>
@@ -289,7 +310,7 @@ export default function DesireDropModal({
           {step === 'ring' && selectedItem && selectedItem.ringOptions && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">반지 선택</h3>
+                <h3 className="text-lg font-semibold">아이템 선택</h3>
                 <button
                   onClick={() => setStep('add')}
                   className="text-gray-600 hover:text-gray-800"
@@ -327,16 +348,66 @@ export default function DesireDropModal({
                     } : {}}
                   >
                     <div className="flex items-center gap-4">
-                      <Image
-                        src={getRingImage(ring.type)}
-                        alt={ring.type}
+                      <img
+                        src={(() => {
+                          // 특수 케이스: 커맨더 포스 이어링은 drop-item에 있음
+                          if (ring.name.includes('커맨더') || ring.name.toLowerCase().includes('commander')) {
+                            return ring.image || '/image/logo.png';
+                          }
+                          
+                          // 실제 반지인지 확인 (리스트레인트, 컨티뉴어스, 웨폰)
+                          const isActualRing = ring.name.includes('링') || 
+                                             ring.name.includes('ring') || 
+                                             ring.name.toLowerCase().includes('restraint') ||
+                                             ring.name.toLowerCase().includes('continue') ||
+                                             ring.name.toLowerCase().includes('weapon');
+                          
+                          if (isActualRing) {
+                            // 실제 반지는 rings 경로 사용
+                            return getRingImage(ring.type);
+                          } else {
+                            // 연마석이나 기타 아이템은 drop-item 경로 사용
+                            return ring.image || '/image/logo.png';
+                          }
+                        })()}
+                        alt={ring.name}
                         width={40}
                         height={40}
                         className="rounded"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          
+                          // 특수 케이스: 커맨더 포스 이어링은 drop-item에 있음
+                          const isCommander = ring.name.includes('커맨더') || ring.name.toLowerCase().includes('commander');
+                          
+                          const isActualRing = ring.name.includes('링') || 
+                                             ring.name.includes('ring') || 
+                                             ring.name.toLowerCase().includes('restraint') ||
+                                             ring.name.toLowerCase().includes('continue') ||
+                                             ring.name.toLowerCase().includes('weapon');
+                          
+                          let imageSrc;
+                          if (isCommander) {
+                            imageSrc = ring.image || '/image/logo.png';
+                          } else if (isActualRing) {
+                            imageSrc = getRingImage(ring.type);
+                          } else {
+                            imageSrc = ring.image || '/image/logo.png';
+                          }
+                            
+                          console.error('아이템 이미지 로드 실패:', {
+                            originalSrc: imageSrc,
+                            itemName: ring.name,
+                            itemType: ring.type,
+                            isActualRing: isActualRing,
+                            isCommander: isCommander,
+                            fallbackSrc: '/image/logo.png'
+                          });
+                          target.src = '/image/logo.png';
+                        }}
                       />
                       <div className="text-left">
                         <p className="font-medium">{ring.fullName}</p>
-                        <p className="text-sm text-gray-600">레벨 {ring.level}</p>
                       </div>
                     </div>
                   </button>

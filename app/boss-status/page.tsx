@@ -275,6 +275,63 @@ export default function BossStatusPage() {
     return 'weapon'; // 기본값
   };
 
+  // 물욕템 이미지 경로 생성 (영문명을 파일명으로 변환)
+  const getDesireItemImage = (itemNameEn?: string, itemName?: string) => {
+    if (!itemNameEn && !itemName) return '/image/logo.png';
+    
+    // 특수 매핑 (API 영문명과 실제 파일명이 다른 경우)
+    const imageOverrides: Record<string, string> = {
+      // 생명의 연마석 관련 모든 가능한 매핑
+      'stoneoflife': 'scochStoneOfLife',
+      'lifestone': 'scochStoneOfLife',
+      'scochstoneoflife': 'scochStoneOfLife',
+      'scochlivelystone': 'scochStoneOfLife',
+      'livelystone': 'scochStoneOfLife',
+      '생명의연마석': 'scochStoneOfLife',
+      '생명의 연마석': 'scochStoneOfLife',
+      '생명연마석': 'scochStoneOfLife',
+      // 신념의 연마석도 추가
+      'stoneofbelief': 'scochStoneOfBelief',
+      'beliefstone': 'scochStoneOfBelief',
+      'scochstoneofbelief': 'scochStoneOfBelief',
+      'scochbeliefstone': 'scochStoneOfBelief',
+      '신념의연마석': 'scochStoneOfBelief',
+      '신념의 연마석': 'scochStoneOfBelief',
+      '신념연마석': 'scochStoneOfBelief',
+      // 반지 상자 관련
+      'ringboxwithlife': 'RingboxWithLife',
+      'liferingbox': 'RingboxWithLife',
+      '생명의보스반지상자': 'RingboxWithLife',
+      '생명의 보스 반지상자': 'RingboxWithLife',
+      // 커맨더 포스 이어링
+      'commanderforceearing': 'commanderForceEaring',
+      'commanderearing': 'commanderForceEaring',
+      '커맨더포스이어링': 'commanderForceEaring',
+      '커맨더 포스 이어링': 'commanderForceEaring',
+      // 필요시 다른 아이템들도 추가 가능
+    };
+
+    // 우선 영문명 사용, 없으면 한글명 사용
+    const itemKey = (itemNameEn || itemName || '').toLowerCase().replace(/[^a-z0-9가-힣]/g, '');
+    
+    // 매핑된 파일명이 있으면 사용
+    const mappedFileName = imageOverrides[itemKey];
+    if (mappedFileName) {
+      // 캐시 버스팅을 위한 타임스탬프 추가
+      const timestamp = Date.now();
+      const imagePath = `/image/drop-item/${mappedFileName}.png?v=${timestamp}`;
+      console.log('최종 이미지 경로 (캐시버스팅):', imagePath);
+      return imagePath;
+    }
+    
+    // 기본적으로 영문명 우선 사용
+    const fileName = itemNameEn || itemName;
+    const timestamp = Date.now();
+    const imagePath = `/image/drop-item/${fileName}.png?v=${timestamp}`;
+    console.log('기본 이미지 경로 (캐시버스팅):', imagePath);
+    return imagePath;
+  };
+
   // 디버깅용 플래그 (한 번만 로그 출력)
   const [hasLoggedBossStructure, setHasLoggedBossStructure] = useState(false);
 
@@ -1816,13 +1873,14 @@ export default function BossStatusPage() {
               return {
                 id: typedItem.id?.toString() || Math.random().toString(),
                 name: typedItem.itemName || typedItem.fullItemName || '알 수 없는 아이템',
-                image: `/image/drop-item/${typedItem.itemNameEn || typedItem.itemName}.png`,
+                image: getDesireItemImage(typedItem.itemNameEn, typedItem.itemName),
                 isRingBox: isRingBox,
                 ringOptions: isRingBox ? typedItem.randomBoxItems?.map(ringItem => ({
                   type: getRingType(ringItem.dropItemName || ringItem.dropItemNameEn || ''),
                   level: ringItem.dropItemLevel || 1,
                   name: ringItem.dropItemName || ringItem.dropItemNameEn || '알 수 없는 반지',
-                  fullName: ringItem.fullDropItemName || ringItem.dropItemName || '알 수 없는 반지'
+                  fullName: ringItem.fullDropItemName || ringItem.dropItemName || '알 수 없는 반지',
+                  image: getDesireItemImage(ringItem.dropItemNameEn, ringItem.dropItemName) // 개별 아이템 이미지 경로 추가
                 })) : undefined
               };
             }) || []
