@@ -34,6 +34,34 @@ export default function BossSelectionModal({
   const [desireDropKoNameMap, setDesireDropKoNameMap] = useState<Record<string, Record<string, Record<string, string>>>>({});
   // API 전체 보스 리스트는 UI Boss로 변환해서 사용
 
+  // 난이도 매핑 함수
+  const mapDifficulty = (koOrEn?: string): 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme' => {
+    const v = (koOrEn || '').toLowerCase();
+    if (v === 'easy' || v === '이지') return 'easy';
+    if (v === 'normal' || v === '노말') return 'normal';
+    if (v === 'hard' || v === '하드') return 'hard';
+    if (v === 'chaos' || v === '카오스') return 'chaos';
+    if (v === 'extreme' || v === '익스트림') return 'extreme';
+    return 'normal';
+  };
+
+  // 영문명을 이미지 경로로 변환
+  const englishToImage = (englishName?: string) => {
+    if (!englishName) return '/image/logo.png';
+    // 일부 명칭 표준화 및 예외 매핑
+    const overrides: Record<string, string> = {
+      // 파일명과 영문명이 다른 경우 보정
+      vervushilla: 'vernushilla',
+    };
+
+    const normalized = englishName
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, ''); // 공백/특수문자 제거
+
+    const fileKey = overrides[normalized] || normalized;
+    return `/image/boss-illustrate/${fileKey}-illustrate.png`;
+  };
+
   // API 보스를 UI 보스로 변환
   const transformApiBossesToUi = useCallback((apiList: (BossResponse & { englishName?: string })[]): Boss[] => {
     const group = new Map<string, Boss>();
@@ -200,22 +228,6 @@ export default function BossSelectionModal({
     }
   }, [isOpen, loadModalData, selectedBosses]);
 
-  const englishToImage = (englishName?: string) => {
-    if (!englishName) return '/image/logo.png';
-    // 일부 명칭 표준화 및 예외 매핑
-    const overrides: Record<string, string> = {
-      // 파일명과 영문명이 다른 경우 보정
-      vervushilla: 'vernushilla',
-    };
-
-    const normalized = englishName
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, ''); // 공백/특수문자 제거
-
-    const fileKey = overrides[normalized] || normalized;
-    return `/image/boss-illustrate/${fileKey}-illustrate.png`;
-  };
-
   const getCurrentDifficultyIndex = useCallback((bossId: string, difficultiesLength: number) => {
     const idx = difficultyIndexByBossId[bossId];
     // 기본값: 최상 난이도(마지막 인덱스)
@@ -233,16 +245,6 @@ export default function BossSelectionModal({
       }
       return { ...prev, [bossId]: nextIndex };
     });
-  };
-
-  const mapDifficulty = (koOrEn?: string): 'easy' | 'normal' | 'hard' | 'chaos' | 'extreme' => {
-    const v = (koOrEn || '').toLowerCase();
-    if (v === 'easy' || v === '이지') return 'easy';
-    if (v === 'normal' || v === '노말') return 'normal';
-    if (v === 'hard' || v === '하드') return 'hard';
-    if (v === 'chaos' || v === '카오스') return 'chaos';
-    if (v === 'extreme' || v === '익스트림') return 'extreme';
-    return 'normal';
   };
 
 
@@ -426,7 +428,7 @@ export default function BossSelectionModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden relative" style={{ overflow: 'hidden !important', position: 'relative' }}>
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -505,185 +507,168 @@ export default function BossSelectionModal({
                       backgroundColor: 'rgba(255, 145, 0, 0.1)'
                     } : {}}
                   >
-                    <div className="flex items-start gap-4">
-                      {/* Left column: Drops thumbnails */}
-                      <div className="flex flex-col items-start w-[92px]">
-                        <div className="flex gap-1">
-                          <Image src={imageSrc} alt={boss.name} width={92} height={92} className="w-[92px] h-[92px] rounded-lg object-cover flex-shrink-0" />
+                    <div className="flex flex-col gap-4">
+                      {/* Top row: Boss info and image */}
+                      <div className="flex items-start gap-4">
+                        {/* Left column: Boss image */}
+                        <div className="flex-shrink-0">
+                          <Image src={imageSrc} alt={boss.name} width={92} height={92} className="w-[92px] h-[92px] rounded-lg object-cover" />
                         </div>
-                        <div className="mt-2 grid grid-cols-3 gap-1 w-full">
-                          {(() => {
-                            const currentIdx = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
-                            const currentDif = boss.difficulties[currentIdx];
-                            const difKey = currentDif.difficulty.toLowerCase();
-                            
-                            // 다양한 키 형태로 시도해서 드롭 아이템 찾기
-                            const bossDropData = desireDropMap[boss.id] || {};
-                            let pool: string[] = [];
-                            let usedKey = '';
-                            
-                            // 디버깅: 현재 보스의 드롭 데이터 확인
-                            console.log(`Boss ${boss.id} (${boss.name}) - Looking for difficulty: ${difKey}`);
-                            console.log(`Available keys:`, Object.keys(bossDropData));
-                            
-                            // 1. 정확한 난이도 키로 찾기
-                            if (bossDropData[difKey]) {
-                              pool = bossDropData[difKey];
-                              usedKey = difKey;
-                            }
-                            // 2. 'all' 키로 찾기
-                            else if (bossDropData['all']) {
-                              pool = bossDropData['all'];
-                              usedKey = 'all';
-                            }
-                            // 3. 다른 가능한 키들로 찾기 (한글 난이도명 등)
-                            else {
-                              const alternativeKeys = Object.keys(bossDropData);
-                              for (const key of alternativeKeys) {
-                                if (key.includes(difKey) || difKey.includes(key)) {
-                                  pool = bossDropData[key];
-                                  usedKey = key;
-                                  break;
-                                }
+
+                        {/* Right side: name, difficulty, entry level, meso */}
+                        <div className="flex-1 flex flex-col justify-center h-[92px]">
+                          {/* Name */}
+                          <div className="mb-2">
+                            <h3 className="font-semibold text-gray-900 text-base truncate">{boss.name}</h3>
+                          </div>
+                          {/* Difficulty controls */}
+                          <div className="flex items-center gap-2 mb-2">
+                            {hasMultipleDifficulties && (
+                              <button
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  if (canSelect) {
+                                    changeDifficulty(boss.id, 'prev', boss.difficulties.length);
+                                  }
+                                }}
+                                disabled={!canSelect}
+                                className={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center ${
+                                  canSelect ? 'text-gray-500 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label="이전 난이도"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                              </button>
+                            )}
+                            <Image
+                              src={`/image/boss-difficulty/difficulty-${difficultyKey}.png`}
+                              alt={difficultyKey}
+                              width={90}
+                              height={28}
+                              className="object-contain"
+                            />
+                            {hasMultipleDifficulties && (
+                              <button
+                                onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  if (canSelect) {
+                                    changeDifficulty(boss.id, 'next', boss.difficulties.length);
+                                  }
+                                }}
+                                disabled={!canSelect}
+                                className={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center ${
+                                  canSelect ? 'text-gray-500 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
+                                }`}
+                                aria-label="다음 난이도"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Entry requirement and meso */}
+                          <div className="space-y-1 text-sm text-gray-600">
+                            <div>입장 요구 레벨: {minRequiredLevel}</div>
+                            <div className="font-medium" style={{ color: '#FF9100' }}>예상 메소: {formatMeso(currentDifficulty.expectedMeso)}</div>
+                          </div>
+                        </div>
+
+                        {/* Checkbox */}
+                        <div 
+                          className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
+                            isSelected
+                              ? ''
+                              : canSelect
+                                ? 'border-gray-300'
+                                : 'border-gray-200'
+                          }`}
+                          style={isSelected ? {
+                            borderColor: '#FF9100',
+                            backgroundColor: '#FF9100'
+                          } : {}}
+                        >
+                          {isSelected && (
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Bottom row: Desire items */}
+                      <div className="grid grid-cols-6 gap-1">
+                        {(() => {
+                          const currentIdx = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
+                          const currentDif = boss.difficulties[currentIdx];
+                          const difKey = currentDif.difficulty.toLowerCase();
+                          const bossDropData = desireDropMap[boss.id] || {};
+                          let pool: string[] = [];
+                          let usedKey = '';
+                          if (bossDropData[difKey]) {
+                            pool = bossDropData[difKey];
+                            usedKey = difKey;
+                          } else if (bossDropData['all']) {
+                            pool = bossDropData['all'];
+                            usedKey = 'all';
+                          } else {
+                            const alternativeKeys = Object.keys(bossDropData);
+                            for (const key of alternativeKeys) {
+                              if (key.includes(difKey) || difKey.includes(key)) {
+                                pool = bossDropData[key];
+                                usedKey = key;
+                                break;
                               }
                             }
-                            
-                            console.log(`Used key: ${usedKey}, Pool size: ${pool.length}`);
-                            
-                            // 반지상자 필터링 함수
-                            const filterOutRingBoxes = (items: string[]): string[] => {
-                              return items.filter(itemName => {
-                                const lowerName = itemName.toLowerCase();
-                                // 반지상자 관련 키워드들 필터링 (반지 자체는 포함)
-                                return !lowerName.includes('ringbox') && 
-                                       !lowerName.includes('ring box') &&
-                                       !lowerName.includes('반지상자') &&
-                                       !lowerName.includes('jade') &&
-                                       !lowerName.includes('ringboxwithlife');
-                              });
-                            };
-                            
-                            // 4. 반지상자 제외하고 최대 3개 선택
-                            const filteredPool = filterOutRingBoxes(pool);
-                            const filteredExpectedItems = filterOutRingBoxes(currentDif.expectedItems);
-                            const list = (filteredPool.length > 0 ? filteredPool : filteredExpectedItems).slice(0, 3);
-                            
-                            return list.map((name, idx) => {
-                              const displayName =
-                                (desireDropKoNameMap[boss.id]?.[usedKey]?.[name]) ||
-                                (desireDropKoNameMap[boss.id]?.['all']?.[name]) ||
-                                name;
-                              return (
-                                <div key={`${boss.id}-${currentIdx}-${idx}-${name}`} className="relative group">
-                                  <Image
-                                    src={`/image/drop-item/${name}.png`}
-                                    alt={name}
-                                    width={28}
-                                    height={28}
-                                    className="w-7 h-7 rounded object-contain bg-white"
-                                    onError={(e) => {
-                                      // 이미지 로드 실패 시 기본 이미지로 대체
-                                      const target = e.target as HTMLImageElement;
-                                      target.src = '/image/logo.png';
-                                    }}
-                                  />
-                                  <div
-                                    className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-1.5 -translate-y-full z-10 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                                    aria-hidden="true"
-                                  >
-                                    {displayName}
-                                  </div>
+                          }
+                          const list = (pool.length > 0 ? pool : currentDif.expectedItems);
+                          return list.map((name, idx) => {
+                            const displayName =
+                              (desireDropKoNameMap[boss.id]?.[usedKey]?.[name]) ||
+                              (desireDropKoNameMap[boss.id]?.['all']?.[name]) ||
+                              name;
+                            return (
+                              <div key={`${boss.id}-${currentIdx}-${idx}-${name}`} className="relative group">
+                                <Image
+                                  src={`/image/drop-item/${name}.png`}
+                                  alt={name}
+                                  width={28}
+                                  height={28}
+                                  className="w-7 h-7 rounded object-contain bg-white"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/image/logo.png';
+                                  }}
+                                />
+                                <div
+                                  className="pointer-events-none absolute z-10 rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap"
+                                  style={{
+                                    position: 'absolute',
+                                    left: '100%',
+                                    transform: 'translateX(0.5rem) translateY(-50%)',
+                                    top: '50%',
+                                    maxWidth: '200px',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    zIndex: 9999
+                                  }}
+                                  aria-hidden="true"
+                                >
+                                  {displayName}
                                 </div>
-                              );
-                            });
-                          })()}
-                        </div>
-                      </div>
-
-                      {/* Right side: name, difficulty (under name), entry level, meso */}
-                      <div className="flex-1">
-                        {/* Name (single line) */}
-                        <div className="mb-2">
-                          <h3 className="font-semibold text-gray-900 text-base truncate">{boss.name}</h3>
-                        </div>
-                        {/* Difficulty controls under name */}
-                        <div className="flex items-center gap-2 mb-2">
-                          {hasMultipleDifficulties && (
-                            <button
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                if (canSelect) {
-                                  changeDifficulty(boss.id, 'prev', boss.difficulties.length);
-                                }
-                              }}
-                              disabled={!canSelect}
-                              className={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center ${
-                                canSelect ? 'text-gray-500 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
-                              }`}
-                              aria-label="이전 난이도"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                              </svg>
-                            </button>
-                          )}
-                          <Image
-                            src={`/image/boss-difficulty/difficulty-${difficultyKey}.png`}
-                            alt={difficultyKey}
-                            width={90}
-                            height={28}
-                            className="object-contain"
-                          />
-                          {hasMultipleDifficulties && (
-                            <button
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
-                                if (canSelect) {
-                                  changeDifficulty(boss.id, 'next', boss.difficulties.length);
-                                }
-                              }}
-                              disabled={!canSelect}
-                              className={`w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center ${
-                                canSelect ? 'text-gray-500 hover:bg-gray-100' : 'text-gray-300 cursor-not-allowed'
-                              }`}
-                              aria-label="다음 난이도"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </button>
-                          )}
-                        </div>
-
-                        {/* Entry requirement and meso */}
-                        <div className="space-y-1 text-sm text-gray-600">
-                          <div>입장 요구 레벨: {minRequiredLevel}</div>
-                          <div className="font-medium" style={{ color: '#FF9100' }}>예상 메소: {formatMeso(currentDifficulty.expectedMeso)}</div>
-                        </div>
-                      </div>
-
-                      {/* Checkbox (original position at right side) */}
-                      <div 
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                          isSelected
-                            ? ''
-                            : canSelect
-                              ? 'border-gray-300'
-                              : 'border-gray-200'
-                        }`}
-                        style={isSelected ? {
-                          borderColor: '#FF9100',
-                          backgroundColor: '#FF9100'
-                        } : {}}
-                      >
-                        {isSelected && (
-                          <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
+                              </div>
+                            );
+                          });
+                        })()}
                       </div>
                     </div>
-                </div>
+
+                      {/* Removed duplicated right-side and extra bottom-row block */}
+                    </div>
                 );
               })}
             </div>
