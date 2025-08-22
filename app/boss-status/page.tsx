@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Character } from "../../types";
+import { Character, CharacterStats } from "../../types";
 import { BossSelection } from "../../types/boss";
 import BossSelectionModal from "../../components/BossSelectionModal";
 import AddBossCharacterModal from "../../components/AddBossCharacterModal";
@@ -12,6 +12,8 @@ import DesireDropModal from "../../components/DesireDropModal";
 
 import { useAuth } from "../../store/authStore";
 import { getCharacterList } from "../../services/characterService";
+import nexonApiService from "../../services/nexonApiService";
+import { TokenManager } from "../../services/authService";
 import { getBossListFromAPI, getBossDesireItems, getOptimizedRecommendation } from "../../services/bossService";
 import type { BossResponse, Boss, OptimizeRecommendationRequest, OptimizedRecommendationResponse } from "../../types/boss";
 // 프리셋 로직은 모달 내부에서 처리
@@ -92,6 +94,29 @@ export default function BossStatusPage() {
   useEffect(() => {
     fetchCharacters();
   }, [fetchCharacters]);
+
+  // 캐릭터 상세 스탯 캐시 및 호버 상태
+  const [characterStatsById, setCharacterStatsById] = useState<Record<string, CharacterStats | 'loading'>>({});
+  const [hoveredCharacterId, setHoveredCharacterId] = useState<string | null>(null);
+  const [hoveredCharacter, setHoveredCharacter] = useState<Character | null>(null);
+  const [tooltipPos, setTooltipPos] = useState<{
+    x: number;
+    y: number;
+    placement: 'above' | 'below';
+  } | null>(null);
+
+  const ensureCharacterStats = useCallback(async (character: Character) => {
+    if (characterStatsById[character.id] && characterStatsById[character.id] !== 'loading') return;
+    const apiKey = TokenManager.getNexonApiKey();
+    if (!apiKey) return;
+    setCharacterStatsById(prev => ({ ...prev, [character.id]: 'loading' }));
+    try {
+      const stats = await nexonApiService.getCharacterStat(character.ocid, apiKey);
+      setCharacterStatsById(prev => ({ ...prev, [character.id]: stats }));
+    } catch {
+      setCharacterStatsById(prev => ({ ...prev, [character.id]: { arcaneForce: 0, authenticForce: 0 } }));
+    }
+  }, [characterStatsById]);
 
   // API 보스 데이터 로드 (BossSelectionModal과 동일한 로직)
   useEffect(() => {
@@ -226,6 +251,19 @@ export default function BossStatusPage() {
 
     const fileKey = overrides[normalized] || normalized;
     return `/image/boss-illustrate/${fileKey}-illustrate.png`;
+  };
+
+  // 숫자 → 한국형 표기 (억 만 나머지)
+  const formatKoreanNumberFull = (n?: number) => {
+    if (!n || n <= 0) return '';
+    const eok = Math.floor(n / 100000000);
+    const man = Math.floor((n % 100000000) / 10000);
+    const rest = n % 10000;
+    const parts: string[] = [];
+    if (eok > 0) parts.push(`${eok}억`);
+    if (man > 0) parts.push(`${man}만`);
+    if (rest > 0) parts.push(`${rest}`);
+    return parts.join(' ');
   };
 
   // 반지 이름으로 반지 타입 결정
@@ -1059,7 +1097,7 @@ export default function BossStatusPage() {
                 </div>
               </div>
 
-              <div className="space-y-3 h-[calc(100vh-350px)] overflow-y-auto overflow-x-visible pr-2">
+              <div className="relative space-y-3 h-[calc(100vh-350px)] overflow-y-auto overflow-x-visible pr-2">
                 {isLoadingCharacters ? (
                   <div className="text-center py-8">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -1103,17 +1141,59 @@ export default function BossStatusPage() {
                       onClick={() => setSelectedCharacterId(character.id)}
                       className="flex items-center gap-3"
                     >
-                      <Image
-                        src={character.image}
-                        alt={character.name}
-                        width={40}
-                        height={40}
-                        className="rounded-lg"
-                      />
+                      <div
+                        className="relative group"
+                        onMouseEnter={(e) => {
+                          setHoveredCharacterId(character.id);
+                          setHoveredCharacter(character);
+                          ensureCharacterStats(character);
+                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                          const TOOLTIP_WIDTH = 560; // w-[560px]
+                          const TOOLTIP_HEIGHT = 300; // 대략 높이
+                          const HALF = TOOLTIP_WIDTH / 2;
+                          const MARGIN = 12;
+                          let x = rect.left + rect.width / 2;
+                          x = Math.max(MARGIN + HALF, Math.min(window.innerWidth - MARGIN - HALF, x));
+                          const spaceAbove = rect.top;
+                          const spaceBelow = window.innerHeight - rect.bottom;
+                          let placement: 'above' | 'below' = 'below';
+                          let top = rect.bottom + 8;
+                          if (spaceAbove > TOOLTIP_HEIGHT + MARGIN || spaceBelow < TOOLTIP_HEIGHT + MARGIN) {
+                            placement = 'above';
+                            top = Math.max(MARGIN, rect.top - 8 - TOOLTIP_HEIGHT);
+                          } else {
+                            placement = 'below';
+                            top = Math.min(window.innerHeight - MARGIN - TOOLTIP_HEIGHT, rect.bottom + 8);
+                          }
+                          setTooltipPos({ x, y: top, placement });
+                        }}
+                        onMouseLeave={() => {
+                          setHoveredCharacterId((prev) => prev === character.id ? null : prev);
+                          setHoveredCharacter((prev) => prev && prev.id === character.id ? null : prev);
+                          setTooltipPos((prev) => (prev ? null : prev));
+                        }}
+                      >
+                        <Image
+                          src={character.image}
+                          alt={character.name}
+                          width={40}
+                          height={40}
+                          className="rounded-lg"
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900 truncate flex-shrink">{character.name}</span>
-                          <span className="text-xs text-gray-500 flex-shrink-0">{character.server}</span>
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            {character.server}
+                            {character.guildName && (
+                              <>
+                                {' '}
+                                <span className="mx-1">|</span>
+                                <span className="text-gray-500">{character.guildName}</span>
+                              </>
+                            )}
+                          </span>
                           {character.isMainCharacter && (
                             <span className="px-2 py-1 text-white text-xs rounded-full font-medium flex-shrink-0" style={{ backgroundColor: '#FF9100' }}>
                               본캐
@@ -1127,6 +1207,72 @@ export default function BossStatusPage() {
                     </div>
                   </div>
                   ))
+                )}
+                {hoveredCharacterId && hoveredCharacter && tooltipPos && (
+                  <div className="pointer-events-none fixed z-50" style={{ left: tooltipPos.x, top: tooltipPos.y }}>
+                    <div className="-translate-x-1/2 w-[560px] rounded-2xl border border-gray-200 bg-white shadow-2xl p-5">
+                      <div className="text-sm font-bold mb-2" style={{ color: '#FF9100' }}>캐릭터 상세정보</div>
+                      <div className="flex gap-3">
+                        <Image src={hoveredCharacter.image} alt={hoveredCharacter.name} width={96} height={96} className="rounded-xl" />
+                        <div className="min-w-0">
+                          <div className="font-semibold text-gray-900 truncate">{hoveredCharacter.name}</div>
+                          <div className="text-xs text-gray-500 truncate">
+                            {hoveredCharacter.server}
+                            {hoveredCharacter.guildName && (<>{' '}|{' '}{hoveredCharacter.guildName}</>)}
+                          </div>
+                          <div className="text-xs text-gray-600 truncate">{hoveredCharacter.job} Lv.{hoveredCharacter.level}</div>
+                          {(() => {
+                            const stats = characterStatsById[hoveredCharacterId];
+                            const s = (stats && stats !== 'loading') ? stats as CharacterStats : undefined;
+                            const power = s?.combatPower;
+                            return power ? (
+                              <div className="mt-2">
+                                <div className="text-xs" style={{ color: '#FF9100' }}>전투력</div>
+                                <div className="text-base font-bold text-gray-900">{formatKoreanNumberFull(power)}</div>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
+                      {(() => {
+                        const stats = characterStatsById[hoveredCharacterId];
+                        const loading = stats === 'loading';
+                        const s = (loading || !stats) ? {} as CharacterStats : (stats as CharacterStats);
+                        const cell = (label: string, value?: number | string) => (
+                          <div>
+                            <div className="text-[11px] text-gray-400">{label}</div>
+                            <div className="text-sm font-semibold text-gray-900 mt-0.5">{loading ? '...' : (value ?? '-')}</div>
+                          </div>
+                        );
+                        return (
+                          <div className="mt-4 border rounded-2xl p-4">
+                            <div className="grid grid-cols-6 gap-x-8 gap-y-4">
+                              {cell('HP', s.hp)}
+                              {cell('MP', s.mp)}
+                              {cell('STR', s.str)}
+                              {cell('DEX', s.dex)}
+                              {cell('INT', s.int)}
+                              {cell('LUK', s.luk)}
+                              {cell('공격력', s.attack)}
+                              {cell('마력', s.magicAttack)}
+                              {cell('데미지(%)', s.damagePct)}
+                              {cell('최종뎀(%)', s.finalDamagePct)}
+                              {cell('보공(%)', s.bossDamagePct)}
+                              {cell('크뎀(%)', s.critDamagePct)}
+                              {cell('방무(%)', s.ignoreDefensePct)}
+                              {cell('쿨감(%)', s.cooldownReducePct)}
+                              {cell('쿨감(초)', s.cooldownReduceSec)}
+                              {cell('재사용(%)', s.cooldownIgnorePct)}
+                              {cell('드랍(%)', s.itemDropPct)}
+                              {cell('메획(%)', s.mesoObtainPct)}
+                              {cell('아케인포스', s.arcaneForce)}
+                              {cell('어센틱포스', s.authenticForce)}
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>

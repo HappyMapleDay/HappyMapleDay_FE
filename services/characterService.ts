@@ -107,6 +107,7 @@ class CharacterService {
       job: response.characterClass || "unknown",
       level: response.characterLevel || 0,
       image: response.characterImage || "/image/logo.png",
+      guildName: undefined,
       isMainCharacter: response.isMain,
       arcaneForce: response.arcaneForce || 0,
       authenticForce: response.authenticForce || 0
@@ -164,7 +165,8 @@ class CharacterService {
                 serverIcon: enhancedInfo.serverIcon,
                 job: enhancedInfo.job,
                 level: enhancedInfo.level,
-                image: enhancedInfo.image
+                image: enhancedInfo.image,
+                guildName: enhancedInfo.guildName
               };
             }
           } catch (error) {

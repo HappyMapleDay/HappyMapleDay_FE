@@ -9,9 +9,46 @@ export interface Character {
   job: string;
   level: number;
   image: string;
+  guildName?: string; // 길드명
   isMainCharacter?: boolean; // 본캐 여부
   arcaneForce?: number; // 아케인 포스
   authenticForce?: number; // 어센틱 포스
+}
+
+// 캐릭터 상세 스탯 (호버 카드 표시용)
+export interface CharacterStats {
+  // 전투력
+  combatPower?: number;
+  // 기본 능력치
+  hp?: number;
+  mp?: number;
+  str?: number;
+  dex?: number;
+  int?: number;
+  luk?: number;
+
+  // 공격/데미지
+  attack?: number;          // 공격력
+  magicAttack?: number;     // 마력
+  damagePct?: number;       // 데미지 %
+  finalDamagePct?: number;  // 최종 데미지 %
+  normalMobDamagePct?: number; // 일반 몬스터 공격 시 데미지 증가 %
+  bossDamagePct?: number;      // 보스 몬스터 공격 시 데미지 증가 %
+  critDamagePct?: number;      // 크리티컬 데미지 %
+  ignoreDefensePct?: number;   // 방어율 무시 %
+
+  // 재사용 대기시간(쿨감)
+  cooldownReducePct?: number; // 재사용 대기시간 감소(%)
+  cooldownReduceSec?: number; // 재사용 대기시간 감소(초)
+  cooldownIgnorePct?: number; // 재사용 대기시간 미적용 확률(%)
+
+  // 파밍
+  itemDropPct?: number;    // 아이템 드롭률 %
+  mesoObtainPct?: number;  // 메소 획득량 %
+
+  // 포스
+  arcaneForce?: number;    // 아케인포스
+  authenticForce?: number; // 어센틱포스
 }
 
 // 사용자 관련 타입

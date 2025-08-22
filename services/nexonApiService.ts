@@ -1,4 +1,4 @@
-import { Character } from '../types';
+import { Character, CharacterStats } from '../types';
 
 // 서버별 아이콘 매핑 함수
 const getServerIcon = (worldName: string): string => {
@@ -230,6 +230,7 @@ class NexonApiService {
         server: data.world_name,
         serverIcon: serverIcon,
         image: data.character_image,
+        guildName: data.character_guild_name,
         isMainCharacter: false
       };
 
@@ -279,7 +280,7 @@ class NexonApiService {
   }
 
   // 캐릭터 능력치 정보 조회 (아케인포스, 어센틱포스 포함)
-  async getCharacterStat(ocid: string, apiKey: string): Promise<{ arcaneForce: number; authenticForce: number }> {
+  async getCharacterStat(ocid: string, apiKey: string): Promise<CharacterStats> {
     try {
       const response = await fetch(`${this.baseUrl}/character/stat?ocid=${ocid}`, {
         headers: {
@@ -295,19 +296,131 @@ class NexonApiService {
 
       const statData: NexonCharacterStat = await response.json();
       
-      // 아케인포스와 어센틱포스 찾기
-      let arcaneForce = 0;
-      let authenticForce = 0;
-      
-      statData.final_stat.forEach(stat => {
-        if (stat.stat_name === '아케인포스') {
-          arcaneForce = parseInt(stat.stat_value) || 0;
-        } else if (stat.stat_name === '어센틱포스') {
-          authenticForce = parseInt(stat.stat_value) || 0;
+      // 공통 파서
+      const parseNumber = (v: string | undefined): number => {
+        if (!v) return 0;
+        const cleaned = v.replace(/[,\s]/g, '');
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+      };
+      const parsePercent = (v: string | undefined): number => {
+        if (!v) return 0;
+        const cleaned = v.replace(/[,\s%]/g, '');
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+      };
+      const parseSeconds = (v: string | undefined): number => {
+        if (!v) return 0;
+        const cleaned = v.replace(/[^0-9.\-]/g, '');
+        const num = parseFloat(cleaned);
+        return isNaN(num) ? 0 : num;
+      };
+
+      // 초기값
+      const result: CharacterStats = {
+        arcaneForce: 0,
+        authenticForce: 0,
+      };
+
+      // 매핑 테이블
+      type StatsKey = keyof CharacterStats;
+      const m: Record<StatsKey, string[]> = {
+        // 포스
+        arcaneForce: ['아케인포스'],
+        authenticForce: ['어센틱포스'],
+        // 기본 능력치
+        hp: ['최대 HP', 'HP'],
+        mp: ['최대 MP', 'MP'],
+        str: ['STR'],
+        dex: ['DEX'],
+        int: ['INT'],
+        luk: ['LUK'],
+        // 공격/데미지
+        attack: ['공격력'],
+        magicAttack: ['마력'],
+        damagePct: ['데미지', '데미지(%)'],
+        finalDamagePct: ['최종 데미지'],
+        normalMobDamagePct: ['일반 몬스터 공격 시 데미지 증가'],
+        bossDamagePct: ['보스 몬스터 공격 시 데미지 증가', '보스 공격력', '보스 몬스터 데미지'],
+        critDamagePct: ['크리티컬 데미지', '크리티컬 데미지(%)'],
+        // 방어/관통
+        ignoreDefensePct: ['몬스터 방어율 무시', '방어율 무시'],
+        // 쿨감
+        cooldownReducePct: ['재사용 대기시간 감소', '재사용 대기시간 감소(%)'],
+        cooldownReduceSec: ['재사용 대기시간 감소(초)'],
+        cooldownIgnorePct: ['재사용 대기시간 미적용'],
+        // 파밍
+        itemDropPct: ['아이템 드롭률'],
+        mesoObtainPct: ['메소 획득량'],
+        // 전투력
+        combatPower: ['전투력'],
+      };
+
+      // 역인덱스 구성: stat_name -> 내부키 (정확/부분 일치 모두 처리)
+      const nameToKey = new Map<string, StatsKey>();
+      (Object.keys(m) as StatsKey[]).forEach((key) => {
+        m[key].forEach((label) => nameToKey.set(label, key));
+      });
+
+      // 순회 파싱
+      statData.final_stat.forEach((stat) => {
+        let key = nameToKey.get(stat.stat_name);
+        let matchedByPartial = false;
+        if (!key) {
+          // 부분 일치 허용: 공백/괄호 제거 후 포함 관계 체크
+          const normalized = stat.stat_name.replace(/\s|\(|\)|%/g, '');
+          (Object.keys(m) as StatsKey[]).some((k) => {
+            // 기본 능력치 및 HP/MP는 부분일치 제외 (오검출 방지)
+            if (k === 'str' || k === 'dex' || k === 'int' || k === 'luk' || k === 'hp' || k === 'mp') return false;
+            const labels = m[k];
+            const matched = labels.some((lbl) => normalized.includes(lbl.replace(/\s|\(|\)|%/g, '')));
+            if (matched) { key = k; matchedByPartial = true; return true; }
+            return false;
+          });
+        }
+        if (!key) return;
+
+        switch (key) {
+          case 'arcaneForce':
+          case 'authenticForce':
+          case 'hp':
+          case 'mp':
+          case 'str':
+          case 'dex':
+          case 'int':
+          case 'luk':
+          case 'attack':
+          case 'magicAttack':
+            // 기본 능력치는 부분일치로 세팅하지 않음
+            if ((key === 'hp' || key === 'mp' || key === 'str' || key === 'dex' || key === 'int' || key === 'luk') && matchedByPartial) break;
+            result[key] = parseNumber(stat.stat_value);
+            break;
+          case 'cooldownReduceSec':
+            result.cooldownReduceSec = parseSeconds(stat.stat_value);
+            break;
+          case 'cooldownIgnorePct':
+          case 'damagePct':
+          case 'finalDamagePct':
+          case 'normalMobDamagePct':
+          case 'bossDamagePct':
+          case 'critDamagePct':
+          case 'ignoreDefensePct':
+          case 'cooldownReducePct':
+          case 'itemDropPct':
+          case 'mesoObtainPct':
+          case 'combatPower': {
+            const val = parsePercent(stat.stat_value);
+            const prev = result[key as keyof CharacterStats] as number | undefined;
+            // 값이 여러 번 올 수 있으므로 0으로 덮어쓰지 말고 더 신뢰도 높은(큰) 값을 유지
+            if (prev === undefined || (val > 0 && (prev ?? 0) < val)) {
+              (result as unknown as Record<string, number>)[key] = val;
+            }
+            break;
+          }
         }
       });
 
-      return { arcaneForce, authenticForce };
+      return result;
     } catch (error) {
       console.error('캐릭터 능력치 조회 실패:', error);
       return { arcaneForce: 0, authenticForce: 0 };

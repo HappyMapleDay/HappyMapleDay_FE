@@ -30,6 +30,8 @@ export default function BossSelectionModal({
   const [apiBosses, setApiBosses] = useState<BossResponse[]>([]);
   // 보스별 난이도 키 -> 드랍아이템EN 배열
   const [desireDropMap, setDesireDropMap] = useState<Record<string, Record<string, string[]>>>({});
+  // 보스별 난이도 키 -> { EN이름: KO이름 } 매핑
+  const [desireDropKoNameMap, setDesireDropKoNameMap] = useState<Record<string, Record<string, Record<string, string>>>>({});
   // API 전체 보스 리스트는 UI Boss로 변환해서 사용
 
   // API 보스를 UI 보스로 변환
@@ -101,6 +103,7 @@ export default function BossSelectionModal({
     if (!isOpen || apiBosses.length === 0 || allBosses.length === 0) return;
     const fetchDrops = async () => {
       const updates: Record<string, Record<string, string[]>> = {};
+      const updatesKo: Record<string, Record<string, Record<string, string>>> = {};
       
       // 난이도 정규화 함수 - 다양한 형태의 난이도를 표준 형태로 변환
       const normalizeDifficulty = (v?: string): string => {
@@ -146,11 +149,17 @@ export default function BossSelectionModal({
               
               if (!updates[uiBoss.id]) updates[uiBoss.id] = {};
               if (!updates[uiBoss.id][key]) updates[uiBoss.id][key] = [];
+              if (!updatesKo[uiBoss.id]) updatesKo[uiBoss.id] = {};
+              if (!updatesKo[uiBoss.id][key]) updatesKo[uiBoss.id][key] = {};
               
               // 영문 아이템명 우선, 없으면 한글 아이템명 사용
-              const itemName = d.itemNameEn || d.itemName;
-              if (itemName && !updates[uiBoss.id][key].includes(itemName)) {
-                updates[uiBoss.id][key].push(itemName);
+              const itemNameEn = d.itemNameEn || d.itemName;
+              const itemNameKo = d.itemName || d.itemNameEn || '';
+              if (itemNameEn && !updates[uiBoss.id][key].includes(itemNameEn)) {
+                updates[uiBoss.id][key].push(itemNameEn);
+              }
+              if (itemNameEn) {
+                updatesKo[uiBoss.id][key][itemNameEn] = itemNameKo;
               }
             });
           } catch (error) {
@@ -175,6 +184,7 @@ export default function BossSelectionModal({
           });
         });
         setDesireDropMap((prev) => ({ ...prev, ...updates }));
+        setDesireDropKoNameMap((prev) => ({ ...prev, ...updatesKo }));
       }
     };
     fetchDrops();
@@ -558,21 +568,34 @@ export default function BossSelectionModal({
                             const filteredExpectedItems = filterOutRingBoxes(currentDif.expectedItems);
                             const list = (filteredPool.length > 0 ? filteredPool : filteredExpectedItems).slice(0, 3);
                             
-                            return list.map((name, idx) => (
-                              <Image
-                                key={`${boss.id}-${currentIdx}-${idx}-${name}`}
-                                src={`/image/drop-item/${name}.png`}
-                                alt={name}
-                                width={28}
-                                height={28}
-                                className="w-7 h-7 rounded object-contain bg-white"
-                                onError={(e) => {
-                                  // 이미지 로드 실패 시 기본 이미지로 대체
-                                  const target = e.target as HTMLImageElement;
-                                  target.src = '/image/logo.png';
-                                }}
-                              />
-                            ));
+                            return list.map((name, idx) => {
+                              const displayName =
+                                (desireDropKoNameMap[boss.id]?.[usedKey]?.[name]) ||
+                                (desireDropKoNameMap[boss.id]?.['all']?.[name]) ||
+                                name;
+                              return (
+                                <div key={`${boss.id}-${currentIdx}-${idx}-${name}`} className="relative group">
+                                  <Image
+                                    src={`/image/drop-item/${name}.png`}
+                                    alt={name}
+                                    width={28}
+                                    height={28}
+                                    className="w-7 h-7 rounded object-contain bg-white"
+                                    onError={(e) => {
+                                      // 이미지 로드 실패 시 기본 이미지로 대체
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = '/image/logo.png';
+                                    }}
+                                  />
+                                  <div
+                                    className="pointer-events-none absolute left-1/2 -translate-x-1/2 -top-1.5 -translate-y-full z-10 whitespace-nowrap rounded bg-gray-900 px-2 py-1 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                                    aria-hidden="true"
+                                  >
+                                    {displayName}
+                                  </div>
+                                </div>
+                              );
+                            });
                           })()}
                         </div>
                       </div>
