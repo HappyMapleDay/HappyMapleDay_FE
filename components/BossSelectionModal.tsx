@@ -600,7 +600,7 @@ export default function BossSelectionModal({
                       </div>
 
                       {/* Bottom row: Desire items */}
-                      <div className="grid grid-cols-6 gap-1">
+                      <div className="flex flex-wrap gap-1 leading-[0]">
                         {(() => {
                           const currentIdx = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
                           const currentDif = boss.difficulties[currentIdx];
@@ -631,13 +631,13 @@ export default function BossSelectionModal({
                               (desireDropKoNameMap[boss.id]?.['all']?.[name]) ||
                               name;
                             return (
-                              <div key={`${boss.id}-${currentIdx}-${idx}-${name}`} className="relative group">
+                              <div key={`${boss.id}-${currentIdx}-${idx}-${name}`} className="relative group w-7 h-7">
                                 <Image
                                   src={`/image/drop-item/${name}.png`}
                                   alt={name}
                                   width={28}
                                   height={28}
-                                  className="w-7 h-7 rounded object-contain bg-white"
+                                  className="w-7 h-7 object-contain"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.src = '/image/logo.png';
