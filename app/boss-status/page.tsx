@@ -1245,7 +1245,7 @@ export default function BossStatusPage() {
                           </div>
                         );
                         return (
-                          <div className="mt-4 border rounded-2xl p-4">
+                          <div className="mt-4 border border-gray-200 rounded-2xl p-4">
                             <div className="grid grid-cols-6 gap-x-8 gap-y-4">
                               {cell('HP', s.hp)}
                               {cell('MP', s.mp)}
