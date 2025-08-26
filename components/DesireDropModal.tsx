@@ -515,10 +515,15 @@ export default function DesireDropModal({
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 text-white rounded-lg transition-colors"
-              style={{ backgroundColor: '#FF9100' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
+              disabled={desireDropItems.length === 0}
+              className="px-6 py-2 text-white rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              style={desireDropItems.length === 0 ? {} : { backgroundColor: '#FF9100' }}
+              onMouseEnter={(e) => {
+                if (desireDropItems.length > 0) e.currentTarget.style.backgroundColor = '#E68200';
+              }}
+              onMouseLeave={(e) => {
+                if (desireDropItems.length > 0) e.currentTarget.style.backgroundColor = '#FF9100';
+              }}
             >
               저장
             </button>
