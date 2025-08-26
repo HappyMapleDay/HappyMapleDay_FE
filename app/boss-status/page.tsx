@@ -885,7 +885,7 @@ export default function BossStatusPage() {
           return {
             bossId: uiBossId,
             selectedDifficulty: uiDifficulty,
-            partySize: 1, // 기본값 사용 (API 응답에 partySize 정보 없음)
+            partySize: recommended.partySize || existingSelection?.partySize || 1, // API 응답의 partySize 사용
             isGoldDrop: existingSelection?.isGoldDrop || false,
             desireDropItems: existingSelection?.desireDropItems || [],
             isCleared: false // 최적화 적용 시에는 기본적으로 미클리어 상태로 설정
@@ -1826,6 +1826,7 @@ export default function BossStatusPage() {
            onClose={() => setIsBossModalOpen(false)}
            character={selectedCharacter}
            selectedBosses={selectedBossSelections.map(sel => sel.bossId)}
+           currentBossSelections={selectedBossSelections}
            onBossesChange={handleBossesChange}
          />
        )}

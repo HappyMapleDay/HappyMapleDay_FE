@@ -4,13 +4,14 @@ import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { Boss, Character } from "../types";
 import { getBossPresetList, getBossListFromAPI, getBossDesireItems } from "../services/bossService";
-import { BossPresetResponse, BossResponse } from "../types/boss";
+import { BossPresetResponse, BossResponse, BossSelection } from "../types/boss";
 
 interface BossSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   character: Character;
   selectedBosses: string[];
+  currentBossSelections?: BossSelection[]; // 현재 캐릭터의 보스 선택 정보
   onBossesChange: (bossIds: string[], difficultySettings?: Record<string, number>) => void;
 }
 
@@ -19,6 +20,7 @@ export default function BossSelectionModal({
   onClose,
   character,
   selectedBosses,
+  currentBossSelections,
   onBossesChange
 }: BossSelectionModalProps) {
   const [localSelectedBosses, setLocalSelectedBosses] = useState<string[]>(selectedBosses);
@@ -228,15 +230,33 @@ export default function BossSelectionModal({
     }
   }, [isOpen, loadModalData, selectedBosses]);
 
-  const getCurrentDifficultyIndex = useCallback((bossId: string, difficultiesLength: number) => {
+  const getCurrentDifficultyIndex = useCallback((bossId: string) => {
     const idx = difficultyIndexByBossId[bossId];
-    // 기본값: 최상 난이도(마지막 인덱스)
-    return typeof idx === 'number' ? idx : Math.max(0, difficultiesLength - 1);
-  }, [difficultyIndexByBossId]);
+    if (typeof idx === 'number') {
+      return idx;
+    }
+    
+    // 현재 캐릭터의 보스 선택 정보에서 난이도 찾기
+    if (currentBossSelections) {
+      const currentSelection = currentBossSelections.find(sel => sel.bossId === bossId);
+      if (currentSelection) {
+        const boss = allBosses.find(b => b.id === bossId);
+        if (boss) {
+          const difficultyIndex = boss.difficulties.findIndex(d => d.difficulty === currentSelection.selectedDifficulty);
+          if (difficultyIndex >= 0) {
+            return difficultyIndex;
+          }
+        }
+      }
+    }
+    
+    // 기본값: 최하 난이도(첫 번째 인덱스)
+    return 0;
+  }, [difficultyIndexByBossId, currentBossSelections, allBosses]);
 
   const changeDifficulty = (bossId: string, direction: 'prev' | 'next', total: number) => {
     setDifficultyIndexByBossId(prev => {
-      const current = getCurrentDifficultyIndex(bossId, total);
+      const current = getCurrentDifficultyIndex(bossId);
       let nextIndex = current;
       if (direction === 'prev') {
         nextIndex = current > 0 ? current - 1 : total - 1;
@@ -482,7 +502,7 @@ export default function BossSelectionModal({
           ) : weeklyBosses.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {weeklyBosses.map((boss) => {
-                const currentIndex = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
+                const currentIndex = getCurrentDifficultyIndex(boss.id);
                 const currentDifficulty = boss.difficulties[currentIndex];
                 const minRequiredLevel = currentDifficulty.requiredLevel;
                 const imageSrc = boss.image || '/image/logo.png';
@@ -602,7 +622,7 @@ export default function BossSelectionModal({
                       {/* Bottom row: Desire items */}
                       <div className="flex flex-wrap gap-1 leading-[0]">
                         {(() => {
-                          const currentIdx = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
+                          const currentIdx = getCurrentDifficultyIndex(boss.id);
                           const currentDif = boss.difficulties[currentIdx];
                           const difKey = currentDif.difficulty.toLowerCase();
                           const bossDropData = desireDropMap[boss.id] || {};
@@ -696,7 +716,7 @@ export default function BossSelectionModal({
                        .filter((boss: Boss) => localSelectedBosses.includes(boss.id))
                        .reduce((sum: number, boss: Boss) => {
                          // 현재 선택된 난이도의 메소 사용
-                         const currentDifficultyIndex = getCurrentDifficultyIndex(boss.id, boss.difficulties.length);
+                         const currentDifficultyIndex = getCurrentDifficultyIndex(boss.id);
                          const currentDifficulty = boss.difficulties[currentDifficultyIndex];
                          return sum + (currentDifficulty?.expectedMeso || 0);
                        }, 0)
