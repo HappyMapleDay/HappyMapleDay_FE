@@ -203,10 +203,7 @@ export default function DesireDropModal({
                               <p className="font-medium">{availableItem.name}</p>
                               {item.ringInfo && (
                                 <p className="text-sm text-gray-600">
-                                  {item.ringInfo.fullName.includes('레벨') || item.ringInfo.fullName.includes('level') 
-                                    ? item.ringInfo.fullName 
-                                    : `${item.ringInfo.fullName} (레벨 ${item.ringInfo.level})`
-                                  }
+                                  {item.ringInfo.fullName}
                                 </p>
                               )}
                               <p className="text-sm font-bold" style={{ color: '#FF9100' }}>
@@ -457,7 +454,7 @@ export default function DesireDropModal({
                 <h4 className="font-semibold">{selectedItem.name}</h4>
                 {selectedItem.isRingBox && selectedItem.ringOptions && (
                   <p className="text-sm text-gray-600 mt-1">
-                    {selectedItem.ringOptions[selectedRingIndex]?.fullName} (레벨 {selectedItem.ringOptions[selectedRingIndex]?.level})
+                    {selectedItem.ringOptions[selectedRingIndex]?.fullName}
                   </p>
                 )}
               </div>
