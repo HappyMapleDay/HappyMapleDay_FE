@@ -523,6 +523,7 @@ export default function BossStatusPage() {
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationResult, setOptimizationResult] = useState<OptimizedRecommendationResponse | null>(null);
   const [isOptimizationResultModalOpen, setIsOptimizationResultModalOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // 서버 목록 동적 생성 (캐릭터들의 서버만 포함)
   const availableServers = ['전체', ...Array.from(new Set(bossCharacters.map(char => char.server)))];
@@ -1012,7 +1013,7 @@ export default function BossStatusPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo and Navigation */}
-            <div className="flex items-center gap-8">
+            <div className="flex items-center gap-4 lg:gap-8">
               <Link href="/" className="flex items-center gap-2">
                 <Image
                   src="/image/logo.png"
@@ -1021,39 +1022,39 @@ export default function BossStatusPage() {
                   height={32}
                   className="rounded-lg"
                 />
-                <span className="text-xl font-bold" style={{ color: '#FF9100' }}>메요일조아</span>
+                <span className="text-lg lg:text-xl font-bold" style={{ color: '#FF9100' }}>메요일조아</span>
               </Link>
 
-              {/* Navigation */}
-              <nav className="flex items-center gap-8">
-              <Link 
-                href="/boss-status" 
-                className="font-medium border-b-2 pb-1"
-                style={{ color: '#FF9100', borderColor: '#FF9100' }}
-              >
-                보돌 현황
-              </Link>
-              <Link 
-                href="/boss-history" 
-                className="text-gray-500 transition-colors"
-                onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
-              >
-                보돌 히스토리
-              </Link>
-              <Link 
-                href="/item-history" 
-                className="text-gray-500 transition-colors"
-                onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
-              >
-                물욕템 히스토리
-              </Link>
-            </nav>
+              {/* Desktop Navigation */}
+              <nav className="hidden lg:flex items-center gap-8">
+                <Link 
+                  href="/boss-status" 
+                  className="font-medium border-b-2 pb-1"
+                  style={{ color: '#FF9100', borderColor: '#FF9100' }}
+                >
+                  보돌 현황
+                </Link>
+                <Link 
+                  href="/boss-history" 
+                  className="text-gray-500 transition-colors"
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
+                >
+                  보돌 히스토리
+                </Link>
+                <Link 
+                  href="/item-history" 
+                  className="text-gray-500 transition-colors"
+                  onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
+                >
+                  물욕템 히스토리
+                </Link>
+              </nav>
             </div>
 
-            {/* User Menu */}
-            <div className="flex items-center gap-4">
+            {/* Desktop User Menu */}
+            <div className="hidden lg:flex items-center gap-4">
               <span className="text-sm text-gray-600">
                 {mainCharacterName || '사용자'}님
               </span>
@@ -1074,7 +1075,75 @@ export default function BossStatusPage() {
                 로그아웃
               </button>
             </div>
+
+            {/* Mobile Menu Button */}
+            <div className="lg:hidden">
+              <button
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
+
+          {/* Mobile Menu */}
+          {isMobileMenuOpen && (
+            <div className="lg:hidden border-t border-gray-200">
+              <div className="px-2 pt-2 pb-3 space-y-1">
+                {/* Mobile Navigation */}
+                <div className="space-y-2 mb-4">
+                  <Link 
+                    href="/boss-status" 
+                    className="block px-3 py-2 rounded-md font-medium"
+                    style={{ color: '#FF9100', backgroundColor: '#FFF3E0' }}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    보돌 현황
+                  </Link>
+                  <Link 
+                    href="/boss-history" 
+                    className="block px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    보돌 히스토리
+                  </Link>
+                  <Link 
+                    href="/item-history" 
+                    className="block px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    물욕템 히스토리
+                  </Link>
+                </div>
+
+                {/* Mobile User Menu */}
+                <div className="border-t border-gray-200 pt-4 space-y-2">
+                  <div className="px-3 py-2 text-sm text-gray-600">
+                    {mainCharacterName || '사용자'}님
+                  </div>
+                  <Link 
+                    href="/settings" 
+                    className="block px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    설정
+                  </Link>
+                  <button 
+                    onClick={() => {
+                      logout();
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                  >
+                    로그아웃
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
@@ -1118,10 +1187,10 @@ export default function BossStatusPage() {
         </div>
 
         {/* Main Content */}
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-3 md:gap-4 lg:gap-6">
           {/* Left Sidebar - Character List */}
-          <div className="col-span-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="col-span-12 md:col-span-4 xl:col-span-3 min-w-0 order-1 md:order-1 xl:order-1">
+            <div className="bg-white rounded-lg border border-gray-200 p-3 lg:p-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">캐릭터 목록</h3>
                 <div className="flex items-center gap-2">
@@ -1165,7 +1234,7 @@ export default function BossStatusPage() {
                 </div>
               </div>
 
-              <div className="relative space-y-3 h-[calc(100vh-350px)] overflow-y-auto overflow-x-visible pr-2">
+              <div className="relative space-y-3 h-[300px] lg:h-[calc(100vh-350px)] overflow-y-auto overflow-x-visible pr-2">
                 {isLoadingCharacters ? (
                   <div className="text-center py-8">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -1347,7 +1416,7 @@ export default function BossStatusPage() {
           </div>
 
           {/* Center - Boss List */}
-          <div className="col-span-6">
+          <div className="col-span-12 md:col-span-8 xl:col-span-6 min-w-0 order-2 md:order-1 xl:order-2">
             <div className="bg-white rounded-lg border border-gray-200 p-3">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">보스 목록</h3>
@@ -1384,7 +1453,7 @@ export default function BossStatusPage() {
 
               {/* 프리셋 탭 제거: 프리셋은 모달 내부에서만 노출 */}
 
-              <div className="h-[calc(100vh-400px)] overflow-y-auto">
+              <div className="h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto">
                 {isLoadingBosses ? (
                   <div className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -1416,7 +1485,7 @@ export default function BossStatusPage() {
                       return (
                         <div 
                           key={selection.bossId} 
-                          className={`border border-gray-200 rounded-2xl p-3 relative cursor-pointer transition-all duration-200 ${
+                          className={`border border-gray-200 rounded-2xl p-2 md:p-2 lg:p-3 relative cursor-pointer transition-all duration-200 ${
                             selection.isCleared 
                               ? 'shadow-md' 
                               : 'bg-white hover:shadow-sm'
@@ -1430,27 +1499,27 @@ export default function BossStatusPage() {
                           }
                           onClick={() => handleBossClearToggle(selection.bossId)}
                         >
-                          <div className="flex items-center gap-4">
+                          <div className="flex items-start gap-2 lg:gap-4">
                             {/* 보스 이미지 */}
-                            <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
+                            <div className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
                               <Image
                                 src={boss.image || '/image/logo.png'}
                                 alt={boss.name}
-                                width={64}
-                                height={64}
+                                width={48}
+                                height={48}
                                 className="w-full h-full object-cover"
                               />
                             </div>
 
                             {/* 보스 정보 섹션 */}
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               {/* 보스 이름 */}
-                              <h4 className={`text-xl font-bold mb-2 ${
+                              <h4 className={`text-base xl:text-lg font-bold mb-2 ${
                                 selection.isCleared ? 'text-gray-800' : 'text-gray-900'
                               }`}>{boss.name}</h4>
                               
                                                             {/* 난이도 컨트롤 + 가격/결정석 */}
-                              <div className="flex items-center mb-2">
+                              <div className="flex flex-col xl:flex-row xl:items-center gap-2 xl:gap-0 mb-2">
                                 <div className="flex items-center gap-2">
                                   <span 
                                     className="text-sm font-medium" 
@@ -1464,17 +1533,17 @@ export default function BossStatusPage() {
                                         e.stopPropagation();
                                         handleDifficultyChange(selection.bossId, 'prev');
                                       }}
-                                      className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                      className="w-6 h-6 xl:w-7 xl:h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
                                     >
                                       &lt;
                                     </button>
-                                    <div className="flex items-center justify-center w-[90px] h-[24px]">
+                                    <div className="flex items-center justify-center w-[60px] xl:w-[90px] h-[18px] xl:h-[24px]">
                                       <Image
                                         src={`/image/boss-difficulty/difficulty-${selection.selectedDifficulty}.png`}
                                         alt={selection.selectedDifficulty}
                                         width={90}
                                         height={24}
-                                        className="h-6 object-contain"
+                                        className="h-4 xl:h-6 object-contain"
                                         style={{ 
                                           imageRendering: 'auto',
                                           maxWidth: 'none'
@@ -1486,32 +1555,29 @@ export default function BossStatusPage() {
                                         e.stopPropagation();
                                         handleDifficultyChange(selection.bossId, 'next');
                                       }}
-                                      className="w-7 h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                      className="w-6 h-6 xl:w-7 xl:h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
                                     >
                                       &gt;
                                     </button>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-3 ml-auto mr-2">
+                                <div className="flex items-center gap-2 xl:gap-3 xl:ml-auto">
                                   <span 
                                     className="text-base font-medium" 
                                     style={{ color: selection.isCleared ? '#8B4513' : '#FF9100' }}
                                   >
                                     가격
                                   </span>
-                                  <div className="flex items-center gap-1">
-                                    <span className={`text-sm ${
-                                      selection.isCleared ? 'text-gray-700' : 'text-gray-600'
-                                    }`}>결정석</span>
-                                    <span className={`text-sm font-bold w-[120px] text-right ${
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    <span className={`text-sm font-bold whitespace-nowrap ${
                                       selection.isCleared ? 'text-gray-800' : 'text-gray-900'
-                                    }`}>{formatMeso(difficultyInfo.expectedMeso / selection.partySize)}</span>
+                                    }`}>결정석 {formatMeso(difficultyInfo.expectedMeso / selection.partySize)}</span>
                                   </div>
                                 </div>
                               </div>
 
                               {/* 파티원 컨트롤 + 물욕템 */}
-                              <div className="flex items-center">
+                              <div className="flex flex-col xl:flex-row xl:items-center gap-2 xl:gap-0">
                                 <div className="flex items-center gap-2">
                                   <span 
                                     className="text-sm font-medium" 
@@ -1526,7 +1592,7 @@ export default function BossStatusPage() {
                                         handlePartySizeChange(selection.bossId, 'prev');
                                       }}
                                       disabled={selection.partySize <= 1}
-                                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
+                                      className={`w-6 h-6 xl:w-7 xl:h-7 rounded-full flex items-center justify-center text-xs ${
                                         selection.partySize <= 1 
                                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
                                           : 'text-white'
@@ -1547,7 +1613,7 @@ export default function BossStatusPage() {
                                     >
                                       &lt;
                                     </button>
-                                    <div className="flex items-center justify-center w-[90px] h-[24px] bg-white border border-gray-300 rounded-full">
+                                    <div className="flex items-center justify-center w-[60px] xl:w-[90px] h-[18px] xl:h-[24px] bg-white border border-gray-300 rounded-full">
                                       <span className="text-sm font-medium text-center">
                                         {selection.partySize}
                                       </span>
@@ -1558,7 +1624,7 @@ export default function BossStatusPage() {
                                         handlePartySizeChange(selection.bossId, 'next');
                                       }}
                                       disabled={selection.partySize >= 6}
-                                      className={`w-7 h-7 rounded-full flex items-center justify-center text-xs ${
+                                      className={`w-6 h-6 xl:w-7 xl:h-7 rounded-full flex items-center justify-center text-xs ${
                                         selection.partySize >= 6 
                                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
                                           : 'text-white'
@@ -1581,18 +1647,15 @@ export default function BossStatusPage() {
                                     </button>
                                   </div>
                                 </div>
-                                                                                                  <div className="flex items-center gap-1 ml-auto mr-2">
-                                  <span className={`text-sm ${
-                                    selection.isCleared ? 'text-gray-700' : 'text-gray-600'
-                                  }`}>물욕템</span>
-                                  <span className={`text-sm font-bold w-[120px] text-right ${
-                                    selection.isCleared ? 'text-gray-800' : 'text-gray-900'
-                                  }`}>
-                                    {selection.desireDropItems.length > 0
-                                      ? formatMeso(selection.desireDropItems.reduce((sum, item) => sum + item.price, 0) / selection.partySize) 
-                                      : '-'}
-                                  </span>
-                                </div>
+                                                                                                                                    <div className="flex items-center gap-2 xl:gap-1 xl:ml-auto min-w-0">
+                                    <span className={`text-sm font-bold whitespace-nowrap ${
+                                      selection.isCleared ? 'text-gray-800' : 'text-gray-900'
+                                    }`}>
+                                      물욕템 {selection.desireDropItems.length > 0
+                                        ? formatMeso(selection.desireDropItems.reduce((sum, item) => sum + item.price, 0) / selection.partySize) 
+                                        : '-'}
+                                    </span>
+                                  </div>
                               </div>
                             </div>
 
@@ -1679,8 +1742,8 @@ export default function BossStatusPage() {
           </div>
 
           {/* Right Sidebar - Summary */}
-          <div className="col-span-3">
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
+          <div className="col-span-12 md:col-span-12 xl:col-span-3 min-w-0 order-3 md:order-2 xl:order-3">
+            <div className="bg-white rounded-lg border border-gray-200 p-3 lg:p-4">
               <h3 className="text-lg font-semibold mb-4" style={{ color: '#FF9100' }}>총계</h3>
               
               {/* 총계 하단 버튼 - 최상부 고정 */}
@@ -1696,7 +1759,7 @@ export default function BossStatusPage() {
                 총 {filteredTotalBossCount}마리 {formatMeso(filteredTotalExpectedMeso)}
               </button>
               
-              <div className="space-y-4 h-[calc(100vh-400px)] overflow-y-auto">
+              <div className="space-y-4 md:space-y-0 md:space-x-4 md:flex md:flex-row lg:flex-col lg:space-x-0 lg:space-y-4 h-[300px] md:h-[200px] lg:h-[calc(100vh-400px)] overflow-y-auto">
                 {/* 캐릭터별 박스 */}
                 {filteredCharacters.map((character) => {
                   const characterSelections = characterBossSelections[character.id] || [];
@@ -1709,7 +1772,7 @@ export default function BossStatusPage() {
                   }, 0);
 
                   return (
-                    <div key={character.id} className="p-3 bg-gray-50 rounded-lg space-y-3">
+                    <div key={character.id} className="p-3 bg-gray-50 rounded-lg space-y-3 md:flex-1 md:min-w-0">
                       {/* 캐릭터 정보 */}
                       <div className="flex items-center gap-3">
                         <Image
@@ -1773,7 +1836,7 @@ export default function BossStatusPage() {
         </div>
 
         {/* Bottom Action Buttons */}
-        <div className="flex items-center justify-between mt-8">
+        <div className="flex flex-col lg:flex-row items-center justify-between mt-8 gap-4">
           <button 
             onClick={handleOptimizeRecommendation}
             disabled={isOptimizing || !filteredCharacters.length}
