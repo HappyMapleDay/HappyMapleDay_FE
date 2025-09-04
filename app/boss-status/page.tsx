@@ -1149,14 +1149,14 @@ export default function BossStatusPage() {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Top Section - 기간, 캐릭터 선택 등 */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+          <div className="flex items-center gap-4 w-full sm:w-auto">
+            <div className="flex items-center gap-2 flex-nowrap overflow-x-auto">
               {availableServers.map((server) => (
                 <button
                   key={server}
                   onClick={() => handleServerChange(server)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors shrink-0 whitespace-nowrap ${
                     selectedServer === server
                       ? 'bg-orange-100 text-orange-700'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -1169,7 +1169,7 @@ export default function BossStatusPage() {
           </div>
 
           {/* Date Range Picker */}
-          <div className="flex items-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2">
+          <div className="flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2">
             <button className="text-gray-400">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -1865,8 +1865,8 @@ export default function BossStatusPage() {
           </button>
 
 
-          <div className="flex gap-2">
-          <div className="text-right mr-6">
+          <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
+          <div className="text-center lg:text-right lg:mr-6">
             <p className="text-sm text-gray-500 mb-2">
             이번 주 보돌 완료 시 이번 주에 대해 
             </p>
@@ -1875,7 +1875,7 @@ export default function BossStatusPage() {
             </p>
           </div>
             <button 
-              className="px-6 py-3 text-white rounded-lg transition-colors"
+              className="px-6 py-3 text-white rounded-lg transition-colors whitespace-nowrap"
               style={{ backgroundColor: '#FF9100' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
