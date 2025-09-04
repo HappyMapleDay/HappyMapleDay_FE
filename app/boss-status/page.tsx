@@ -1780,16 +1780,42 @@ export default function BossStatusPage() {
                     <div key={character.id} className="p-3 bg-gray-50 rounded-lg space-y-3">
                       {/* 캐릭터 정보 */}
                       <div className="flex items-center gap-3">
-                        <Image
-                          src={character.image}
-                          alt={character.name}
-                          width={64}
-                          height={64}
-                          className="rounded-lg object-cover"
-                        />
-                        <div>
-                          <div className="font-medium text-gray-900">{character.name}</div>
-                          <div className="text-sm text-gray-600">
+                        <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
+                          <img
+                            src={character.image}
+                            alt={character.name}
+                            className="w-full h-full"
+                            style={{
+                              objectFit: 'none',
+                              objectPosition: '55% 58%',
+                              transform: 'scale(0.8)',
+                              transformOrigin: '55% 58%',
+                              imageRendering: 'crisp-edges'
+                            }}
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 truncate">
+                              {character.name}
+                            </span>
+                            {character.isMainCharacter && (
+                              <span className="px-2 py-1 text-white text-xs rounded-full font-medium flex-shrink-0" style={{ backgroundColor: '#FF9100' }}>
+                                본캐
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {character.server}
+                            {character.guildName && (
+                              <>
+                                {' '}
+                                <span className="mx-1">|</span>
+                                <span>{character.guildName}</span>
+                              </>
+                            )}
+                          </div>
+                          <div className="text-sm text-gray-600 truncate">
                             {character.job} Lv.{character.level}
                           </div>
                         </div>
