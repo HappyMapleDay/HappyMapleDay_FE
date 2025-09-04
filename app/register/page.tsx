@@ -314,24 +314,26 @@ export default function Register() {
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                        <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
                           <img
                             src={character.image}
                             alt={character.name}
                             className="w-full h-full"
                             style={{
                               objectFit: 'none',
-                              objectPosition: '70% 75%',
-                              transform: 'scale(0.75)',
-                              transformOrigin: '70% 75%',
+                              objectPosition: '55% 58%',
+                              transform: 'scale(0.8)',
+                              transformOrigin: '55% 58%',
                               imageRendering: 'crisp-edges'
                             }}
                           />
                         </div>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-                            {character.name}
-                            <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-medium text-gray-900 truncate">
+                              {character.name}
+                            </span>
+                            <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1 flex-shrink-0">
                               {character.serverIcon ? (
                                 <Image
                                   src={character.serverIcon}
@@ -346,7 +348,7 @@ export default function Register() {
                               {character.server}
                             </span>
                           </div>
-                          <div className="text-gray-600">
+                          <div className="text-gray-600 truncate">
                             {character.job} | Lv.{character.level}
                           </div>
                         </div>
@@ -394,22 +396,26 @@ export default function Register() {
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          <Image
-                            src={character.image}
-                            alt={character.name}
-                            width={64}
-                            height={64}
-                            className="rounded-lg object-cover"
-                            style={{ 
-                            transform: 'scale(1.3)', 
-                            transformOrigin: 'center',
-                            imageRendering: 'crisp-edges'
-                          }}
-                          />
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900 mb-1 flex items-center gap-2">
-                              {character.name}
-                              <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1">
+                          <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
+                            <img
+                              src={character.image}
+                              alt={character.name}
+                              className="w-full h-full"
+                              style={{
+                                objectFit: 'none',
+                                objectPosition: '55% 58%',
+                                transform: 'scale(0.8)',
+                                transformOrigin: '55% 58%',
+                                imageRendering: 'crisp-edges'
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-gray-900 truncate">
+                                {character.name}
+                              </span>
+                              <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1 flex-shrink-0">
                                 {character.serverIcon ? (
                                   <Image
                                     src={character.serverIcon}
@@ -424,7 +430,7 @@ export default function Register() {
                                 {character.server}
                               </span>
                             </div>
-                            <div className="text-gray-600">
+                            <div className="text-gray-600 truncate">
                               {character.job} | Lv.{character.level}
                             </div>
                           </div>
