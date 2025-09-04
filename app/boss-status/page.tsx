@@ -1189,7 +1189,7 @@ export default function BossStatusPage() {
         {/* Main Content */}
         <div className="grid grid-cols-12 gap-3 md:gap-4 lg:gap-6">
           {/* Left Sidebar - Character List */}
-          <div className="col-span-12 md:col-span-4 xl:col-span-3 min-w-0 order-1 md:order-1 xl:order-1">
+          <div className="col-span-12 md:col-span-6 xl:col-span-3 min-w-0 order-1 md:order-1 xl:order-1">
             <div className="bg-white rounded-lg border border-gray-200 p-3 lg:p-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900">캐릭터 목록</h3>
@@ -1421,7 +1421,7 @@ export default function BossStatusPage() {
           </div>
 
           {/* Center - Boss List */}
-          <div className="col-span-12 md:col-span-8 xl:col-span-6 min-w-0 order-2 md:order-1 xl:order-2">
+          <div className="col-span-12 md:col-span-6 xl:col-span-6 min-w-0 order-2 md:order-2 xl:order-2">
             <div className="bg-white rounded-lg border border-gray-200 p-3">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">보스 목록</h3>
@@ -1747,7 +1747,7 @@ export default function BossStatusPage() {
           </div>
 
           {/* Right Sidebar - Summary */}
-          <div className="col-span-12 md:col-span-12 xl:col-span-3 min-w-0 order-3 md:order-2 xl:order-3">
+          <div className="col-span-12 md:col-span-6 xl:col-span-3 min-w-0 order-3 md:order-3 xl:order-3">
             <div className="bg-white rounded-lg border border-gray-200 p-3 lg:p-4">
               <h3 className="text-lg font-semibold mb-4" style={{ color: '#FF9100' }}>총계</h3>
               
@@ -1864,10 +1864,56 @@ export default function BossStatusPage() {
               </div>
             </div>
           </div>
+
+          {/* Action Buttons Area - 모바일/태블릿에서만 표시 */}
+          <div className="col-span-12 md:col-span-6 xl:hidden min-w-0 order-4 md:order-4">
+            <div className="bg-white rounded-lg border border-gray-200 p-3">
+              <div className="space-y-3">
+                <button 
+                  onClick={handleOptimizeRecommendation}
+                  disabled={isOptimizing || !filteredCharacters.length}
+                  className="w-full px-3 py-2 bg-white border-2 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                  style={{ 
+                    borderColor: '#FF9100', 
+                    color: '#FF9100' 
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isOptimizing && filteredCharacters.length > 0) {
+                      e.currentTarget.style.backgroundColor = '#FFF3E0';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isOptimizing && filteredCharacters.length > 0) {
+                      e.currentTarget.style.backgroundColor = 'white';
+                    }
+                  }}
+                >
+                  {isOptimizing ? '추천 최적 보돌 계산 중...' : '추천 최적 보돌 산출'}
+                </button>
+                
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-500 text-center">
+                    <p>이번 주 보돌 완료 시</p>
+                    <p>이번 주에 대해</p>
+                    <p>추천 최적 보돌 산출</p>
+                    <p>기능을 사용할 수 없습니다.</p>
+                  </div>
+                  <button 
+                    className="w-full px-3 py-2 text-white rounded-lg transition-colors text-xs"
+                    style={{ backgroundColor: '#FF9100' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
+                  >
+                    이번 주 보돌 완료
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Bottom Action Buttons */}
-        <div className="flex flex-col lg:flex-row items-center justify-between mt-8 gap-4">
+        {/* Bottom Action Buttons - 데스크톱용 */}
+        <div className="hidden xl:flex flex-col lg:flex-row items-center justify-between mt-8 gap-4">
           <button 
             onClick={handleOptimizeRecommendation}
             disabled={isOptimizing || !filteredCharacters.length}
@@ -1890,16 +1936,15 @@ export default function BossStatusPage() {
             {isOptimizing ? '추천 최적 보돌 계산 중...' : '추천 최적 보돌 산출'}
           </button>
 
-
           <div className="flex flex-col lg:flex-row gap-2 lg:items-center">
-          <div className="text-center lg:text-right lg:mr-6">
-            <p className="text-sm text-gray-500 mb-2">
-            이번 주 보돌 완료 시 이번 주에 대해 
-            </p>
-            <p className="text-sm text-gray-500">
-            추천 최적 보돌 산출 기능을 사용할 수 없습니다.
-            </p>
-          </div>
+            <div className="text-center lg:text-right lg:mr-6">
+              <p className="text-sm text-gray-500 mb-2">
+                이번 주 보돌 완료 시 이번 주에 대해 
+              </p>
+              <p className="text-sm text-gray-500">
+                추천 최적 보돌 산출 기능을 사용할 수 없습니다.
+              </p>
+            </div>
             <button 
               className="px-6 py-3 text-white rounded-lg transition-colors whitespace-nowrap"
               style={{ backgroundColor: '#FF9100' }}
@@ -1909,7 +1954,8 @@ export default function BossStatusPage() {
               이번 주 보돌 완료
             </button>
           </div>
-                 </div>
+        </div>
+
        </div>
 
        {/* Boss Selection Modal */}
