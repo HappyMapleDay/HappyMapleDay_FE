@@ -329,11 +329,9 @@ export default function Register() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-medium text-gray-900 truncate">
-                              {character.name}
-                            </span>
-                            <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1 flex-shrink-0">
+                          <div className="font-medium text-gray-900 mb-1 flex items-center min-w-0">
+                            <span className="overflow-hidden text-ellipsis whitespace-nowrap">{character.name}</span>
+                            <span className="ml-2 flex items-center gap-1 flex-shrink-0 border border-gray-300 rounded-full px-2 py-0.5">
                               {character.serverIcon ? (
                                 <Image
                                   src={character.serverIcon}
@@ -345,10 +343,10 @@ export default function Register() {
                               ) : (
                                 <span>⭐</span>
                               )}
-                              {character.server}
+                              <span className="text-xs text-gray-600 font-medium">{character.server}</span>
                             </span>
                           </div>
-                          <div className="text-gray-600 truncate">
+                          <div className="text-sm text-gray-600 truncate">
                             {character.job} | Lv.{character.level}
                           </div>
                         </div>
@@ -411,11 +409,9 @@ export default function Register() {
                             />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-gray-900 truncate">
-                                {character.name}
-                              </span>
-                              <span className="text-sm bg-gray-200 rounded-full px-2 py-1 flex items-center gap-1 flex-shrink-0">
+                            <div className="font-medium text-gray-900 mb-1 flex items-center min-w-0">
+                              <span className="overflow-hidden text-ellipsis whitespace-nowrap">{character.name}</span>
+                              <span className="ml-2 flex items-center gap-1 flex-shrink-0 border border-gray-300 rounded-full px-2 py-0.5">
                                 {character.serverIcon ? (
                                   <Image
                                     src={character.serverIcon}
@@ -427,10 +423,10 @@ export default function Register() {
                                 ) : (
                                   <span>⭐</span>
                                 )}
-                                {character.server}
+                                <span className="text-xs text-gray-600 font-medium">{character.server}</span>
                               </span>
                             </div>
-                            <div className="text-gray-600 truncate">
+                            <div className="text-sm text-gray-600 truncate">
                               {character.job} | Lv.{character.level}
                             </div>
                           </div>

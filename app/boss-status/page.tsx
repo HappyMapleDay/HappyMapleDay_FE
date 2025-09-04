@@ -1256,8 +1256,12 @@ export default function BossStatusPage() {
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     } ${character.isMainCharacter ? 'border-l-4 border-l-orange-500' : ''}`}
                   >
-                    {/* 캐릭터 삭제 X 버튼 (본캐가 아닌 경우에만 표시) */}
-                    {!character.isMainCharacter && (
+                    {/* 본캐 표시 또는 삭제 버튼 */}
+                    {character.isMainCharacter ? (
+                      <div className="absolute top-1 right-1 w-6 h-6 text-white rounded-full flex items-center justify-center z-10 border-2 border-white shadow-sm" style={{ backgroundColor: '#FF9100' }}>
+                        <span className="text-xs font-medium">본</span>
+                      </div>
+                    ) : (
                       <button
                         onClick={(e) => {
                           e.stopPropagation(); // 캐릭터 선택 이벤트 방지
@@ -1276,7 +1280,7 @@ export default function BossStatusPage() {
 
                     <div 
                       onClick={() => setSelectedCharacterId(character.id)}
-                      className="flex items-center gap-3"
+                      className="flex items-center"
                       onMouseEnter={(e) => {
                         setHoveredCharacterId(character.id);
                         setHoveredCharacter(character);
@@ -1321,29 +1325,33 @@ export default function BossStatusPage() {
                           }}
                         />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900 truncate">
-                            {character.name}
-                          </span>
-                          {character.isMainCharacter && (
-                            <span className="px-2 py-1 text-white text-xs rounded-full font-medium flex-shrink-0" style={{ backgroundColor: '#FF9100' }}>
-                              본캐
-                            </span>
+                                              <div className="flex-1 min-w-0">
+                          <span className="text-xs text-gray-500 mb-0 pb-0 block">Lv.{character.level}</span>
+                          <div className="font-medium text-gray-900 truncate mb-0.5 flex items-center">
+                          {character.serverIcon ? (
+                            <Image
+                              src={character.serverIcon}
+                              alt={character.server}
+                              width={16}
+                              height={16}
+                              className="rounded-sm mr-1"
+                            />
+                          ) : (
+                            <span className="mr-1">⭐</span>
                           )}
+                          <span>{character.name}</span>
                         </div>
-                        <div className="text-xs text-gray-500">
-                          {character.server}
-                          {character.guildName && (
-                            <>
-                              {' '}
-                              <span className="mx-1">|</span>
+                        <div className="text-xs text-gray-500 mb-1">
+                          <span className="flex items-center border border-gray-300 rounded-full px-2 py-0.5 w-fit">
+                            {character.guildName ? (
                               <span>{character.guildName}</span>
-                            </>
-                          )}
+                            ) : (
+                              <span>길드없음</span>
+                            )}
+                          </span>
                         </div>
                         <div className="text-sm text-gray-600 truncate">
-                          {character.job} Lv.{character.level}
+                          {character.job}
                         </div>
                       </div>
                     </div>
@@ -1777,9 +1785,15 @@ export default function BossStatusPage() {
                   }, 0);
 
                   return (
-                    <div key={character.id} className="p-3 bg-gray-50 rounded-lg space-y-3">
+                    <div key={character.id} className="p-3 bg-gray-50 rounded-lg space-y-3 relative">
+                      {/* 본캐 표시 */}
+                      {character.isMainCharacter && (
+                        <div className="absolute top-1 right-1 w-6 h-6 text-white rounded-full flex items-center justify-center z-10 border-2 border-white shadow-sm" style={{ backgroundColor: '#FF9100' }}>
+                          <span className="text-xs font-medium">본</span>
+                        </div>
+                      )}
                       {/* 캐릭터 정보 */}
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center">
                         <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
                           <img
                             src={character.image}
@@ -1795,28 +1809,32 @@ export default function BossStatusPage() {
                           />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900 truncate">
-                              {character.name}
-                            </span>
-                            {character.isMainCharacter && (
-                              <span className="px-2 py-1 text-white text-xs rounded-full font-medium flex-shrink-0" style={{ backgroundColor: '#FF9100' }}>
-                                본캐
-                              </span>
+                          <span className="text-xs text-gray-500 mb-0 pb-0 block">Lv.{character.level}</span>
+                          <div className="font-medium text-gray-900 truncate mb-0.5 flex items-center">
+                            {character.serverIcon ? (
+                              <Image
+                                src={character.serverIcon}
+                                alt={character.server}
+                                width={16}
+                                height={16}
+                                className="rounded-sm mr-1"
+                              />
+                            ) : (
+                              <span className="mr-1">⭐</span>
                             )}
+                            <span>{character.name}</span>
                           </div>
-                          <div className="text-xs text-gray-500">
-                            {character.server}
-                            {character.guildName && (
-                              <>
-                                {' '}
-                                <span className="mx-1">|</span>
+                          <div className="text-xs text-gray-500 mb-1">
+                            <span className="flex items-center border border-gray-300 rounded-full px-2 py-0.5 w-fit">
+                              {character.guildName ? (
                                 <span>{character.guildName}</span>
-                              </>
-                            )}
+                              ) : (
+                                <span>길드없음</span>
+                              )}
+                            </span>
                           </div>
                           <div className="text-sm text-gray-600 truncate">
-                            {character.job} Lv.{character.level}
+                            {character.job}
                           </div>
                         </div>
                       </div>
