@@ -314,13 +314,20 @@ export default function Register() {
                       }`}
                     >
                       <div className="flex items-center gap-4">
-                        <Image
-                          src={character.image}
-                          alt={character.name}
-                          width={48}
-                          height={48}
-                          className="rounded-lg"
-                        />
+                        <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
+                          <img
+                            src={character.image}
+                            alt={character.name}
+                            className="w-full h-full"
+                            style={{
+                              objectFit: 'none',
+                              objectPosition: '70% 75%',
+                              transform: 'scale(0.75)',
+                              transformOrigin: '70% 75%',
+                              imageRendering: 'crisp-edges'
+                            }}
+                          />
+                        </div>
                         <div className="flex-1">
                           <div className="font-medium text-gray-900 mb-1 flex items-center gap-2">
                             {character.name}
@@ -390,9 +397,14 @@ export default function Register() {
                           <Image
                             src={character.image}
                             alt={character.name}
-                            width={48}
-                            height={48}
-                            className="rounded-lg"
+                            width={64}
+                            height={64}
+                            className="rounded-lg object-cover"
+                            style={{ 
+                            transform: 'scale(1.3)', 
+                            transformOrigin: 'center',
+                            imageRendering: 'crisp-edges'
+                          }}
                           />
                           <div className="flex-1">
                             <div className="font-medium text-gray-900 mb-1 flex items-center gap-2">

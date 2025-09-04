@@ -1277,64 +1277,69 @@ export default function BossStatusPage() {
                     <div 
                       onClick={() => setSelectedCharacterId(character.id)}
                       className="flex items-center gap-3"
+                      onMouseEnter={(e) => {
+                        setHoveredCharacterId(character.id);
+                        setHoveredCharacter(character);
+                        ensureCharacterStats(character);
+                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                        const TOOLTIP_WIDTH = 560; // w-[560px]
+                        const TOOLTIP_HEIGHT = 300; // 대략 높이
+                        const HALF = TOOLTIP_WIDTH / 2;
+                        const MARGIN = 12;
+                        let x = rect.left + rect.width / 2;
+                        x = Math.max(MARGIN + HALF, Math.min(window.innerWidth - MARGIN - HALF, x));
+                        const spaceAbove = rect.top;
+                        const spaceBelow = window.innerHeight - rect.bottom;
+                        let placement: 'above' | 'below' = 'below';
+                        let top = rect.bottom + 8;
+                        if (spaceAbove > TOOLTIP_HEIGHT + MARGIN || spaceBelow < TOOLTIP_HEIGHT + MARGIN) {
+                          placement = 'above';
+                          top = Math.max(MARGIN, rect.top - 8 - TOOLTIP_HEIGHT);
+                        } else {
+                          placement = 'below';
+                          top = Math.min(window.innerHeight - MARGIN - TOOLTIP_HEIGHT, rect.bottom + 8);
+                        }
+                        setTooltipPos({ x, y: top, placement });
+                      }}
+                      onMouseLeave={() => {
+                        setHoveredCharacterId((prev) => prev === character.id ? null : prev);
+                        setHoveredCharacter((prev) => prev && prev.id === character.id ? null : prev);
+                        setTooltipPos((prev) => (prev ? null : prev));
+                      }}
                     >
-                      <div
-                        className="relative group"
-                        onMouseEnter={(e) => {
-                          setHoveredCharacterId(character.id);
-                          setHoveredCharacter(character);
-                          ensureCharacterStats(character);
-                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                          const TOOLTIP_WIDTH = 560; // w-[560px]
-                          const TOOLTIP_HEIGHT = 300; // 대략 높이
-                          const HALF = TOOLTIP_WIDTH / 2;
-                          const MARGIN = 12;
-                          let x = rect.left + rect.width / 2;
-                          x = Math.max(MARGIN + HALF, Math.min(window.innerWidth - MARGIN - HALF, x));
-                          const spaceAbove = rect.top;
-                          const spaceBelow = window.innerHeight - rect.bottom;
-                          let placement: 'above' | 'below' = 'below';
-                          let top = rect.bottom + 8;
-                          if (spaceAbove > TOOLTIP_HEIGHT + MARGIN || spaceBelow < TOOLTIP_HEIGHT + MARGIN) {
-                            placement = 'above';
-                            top = Math.max(MARGIN, rect.top - 8 - TOOLTIP_HEIGHT);
-                          } else {
-                            placement = 'below';
-                            top = Math.min(window.innerHeight - MARGIN - TOOLTIP_HEIGHT, rect.bottom + 8);
-                          }
-                          setTooltipPos({ x, y: top, placement });
-                        }}
-                        onMouseLeave={() => {
-                          setHoveredCharacterId((prev) => prev === character.id ? null : prev);
-                          setHoveredCharacter((prev) => prev && prev.id === character.id ? null : prev);
-                          setTooltipPos((prev) => (prev ? null : prev));
-                        }}
-                      >
-                        <Image
+                      <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
+                        <img
                           src={character.image}
                           alt={character.name}
-                          width={40}
-                          height={40}
-                          className="rounded-lg"
+                          className="w-full h-full"
+                          style={{
+                            objectFit: 'none',
+                            objectPosition: '55% 58%',
+                            transform: 'scale(0.8)',
+                            transformOrigin: '55% 58%',
+                            imageRendering: 'crisp-edges'
+                          }}
                         />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900 truncate flex-shrink">{character.name}</span>
-                          <span className="text-xs text-gray-500 flex-shrink-0">
-                            {character.server}
-                            {character.guildName && (
-                              <>
-                                {' '}
-                                <span className="mx-1">|</span>
-                                <span className="text-gray-500">{character.guildName}</span>
-                              </>
-                            )}
+                          <span className="font-medium text-gray-900 truncate">
+                            {character.name}
                           </span>
                           {character.isMainCharacter && (
                             <span className="px-2 py-1 text-white text-xs rounded-full font-medium flex-shrink-0" style={{ backgroundColor: '#FF9100' }}>
                               본캐
                             </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {character.server}
+                          {character.guildName && (
+                            <>
+                              {' '}
+                              <span className="mx-1">|</span>
+                              <span>{character.guildName}</span>
+                            </>
                           )}
                         </div>
                         <div className="text-sm text-gray-600 truncate">
@@ -1778,9 +1783,9 @@ export default function BossStatusPage() {
                         <Image
                           src={character.image}
                           alt={character.name}
-                          width={32}
-                          height={32}
-                          className="rounded-lg"
+                          width={64}
+                          height={64}
+                          className="rounded-lg object-cover"
                         />
                         <div>
                           <div className="font-medium text-gray-900">{character.name}</div>
@@ -1966,4 +1971,4 @@ export default function BossStatusPage() {
       />
      </div>
    );
- } 
+ }

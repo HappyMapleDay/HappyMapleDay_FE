@@ -1,0 +1,10 @@
+[33mc15fbad[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mboss-status[m[33m, [m[1;31morigin/boss-status[m[33m)[m fix: PC 환경 반응형 UI 개선
+[33mff6f555[m feat: 보스 현황 페이지 반응형 UI 개선
+[33m1bb6c84[m feat: 최적 보돌 산출 결과 모달 UI 개선
+[33m44a0918[m fix: 랜덤박스 아이템 레벨표시 오류수정
+[33mb334489[m fix: 최적 보돌 산출 파티사이즈 및 보스 편집 모달 난이도 버그 수정
+[33m52f612d[m style: 물욕템 UI 개선 및 이미지 매칭 로직 수정
+[33m925b8eb[m style: 보스 선택 모달 레이아웃 조정
+[33mce3546c[m feat: 보스 선택 모달 물욕아이템 전체 표시
+[33m8757aec[m style: 경계선 연하게 수정
+[33mf88e56f[m feat: 캐릭터 툴팁 카드 구현

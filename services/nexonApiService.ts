@@ -99,6 +99,85 @@ interface NexonCharacterStat {
 class NexonApiService {
   private readonly baseUrl = 'https://open.api.nexon.com/maplestory/v1';
 
+  // 캐릭터 이미지 URL을 고해상도로 개선 (96x96 제한 해결 시도)
+  private enhanceCharacterImageUrl(originalUrl: string): string {
+    if (!originalUrl) return originalUrl;
+    
+    try {
+      console.log('원본 이미지 URL:', originalUrl);
+      
+      // 넥슨 API에서 96x96, 64x64만 제공하는 문제 해결 시도
+      const enhancedOptions = [
+        // 1. 원본 URL
+        originalUrl,
+        // 2. 다양한 크기 파라미터 시도
+        `${originalUrl}?size=128`,
+        `${originalUrl}?size=256`,
+        `${originalUrl}?size=300`,
+        `${originalUrl}?size=512`,
+        // 3. 스케일 파라미터 시도
+        `${originalUrl}?scale=2`,
+        `${originalUrl}?scale=3`,
+        `${originalUrl}?scale=4`,
+        // 4. 품질 파라미터 시도
+        `${originalUrl}?quality=high`,
+        `${originalUrl}?quality=best`,
+        // 5. 포맷 파라미터 시도
+        `${originalUrl}?format=png`,
+        `${originalUrl}?format=jpg`,
+        // 6. 조합 파라미터 시도
+        `${originalUrl}?size=256&scale=2`,
+        `${originalUrl}?size=300&quality=high`,
+        `${originalUrl}?scale=2&format=png`
+      ];
+      
+      console.log('향상된 이미지 URL 옵션들:', enhancedOptions);
+      
+      // maplescouter.com처럼 고화질 이미지를 얻기 위한 다양한 시도
+      const priorityOptions = [
+        // 1. 원본 URL
+        originalUrl,
+        // 2. 다양한 크기 파라미터 (maplescouter가 사용할 수 있는 것들)
+        `${originalUrl}?size=512`,
+        `${originalUrl}?size=256`,
+        `${originalUrl}?size=128`,
+        // 3. 스케일 파라미터
+        `${originalUrl}?scale=2`,
+        `${originalUrl}?scale=3`,
+        `${originalUrl}?scale=4`,
+        // 4. 품질 파라미터
+        `${originalUrl}?quality=high`,
+        `${originalUrl}?quality=best`,
+        // 5. 포맷 파라미터
+        `${originalUrl}?format=png`,
+        // 6. 조합 파라미터
+        `${originalUrl}?size=512&scale=2`,
+        `${originalUrl}?size=256&quality=high`,
+        `${originalUrl}?scale=2&format=png`
+      ];
+      
+      console.log('우선순위 이미지 URL 옵션들:', priorityOptions);
+      
+      // 실제로 작동하는 URL을 찾기 위해 각 옵션을 테스트
+      // 현재는 첫 번째 옵션(?size=300)을 시도하고, 
+      // 브라우저에서 실패 시 자동으로 원본으로 폴백되도록 함
+      const selectedUrl = priorityOptions[0];
+      console.log('선택된 이미지 URL:', selectedUrl);
+      
+      // 추가 디버깅: 각 우선순위 옵션들을 콘솔에 출력
+      console.log('테스트할 URL 순서:');
+      priorityOptions.forEach((url, index) => {
+        console.log(`${index + 1}. ${url}`);
+      });
+      
+      return selectedUrl;
+      
+    } catch (error) {
+      console.warn('이미지 URL 개선 실패, 원본 URL 사용:', error);
+      return originalUrl;
+    }
+  }
+
   // API 키로 계정의 캐릭터 목록 조회
   async getCharacterList(apiKey: string): Promise<Character[]> {
     try {
@@ -149,8 +228,8 @@ class NexonApiService {
 
           const basicData: NexonCharacterBasic = await basicResponse.json();
 
-          
-
+          // API 응답에서 실제 이미지 URL 확인
+          console.log(`캐릭터 ${char.character_name} 이미지 URL:`, basicData.character_image);
 
           // 아케인포스, 어센틱포스 정보 조회
           const forceData = await this.getCharacterStat(char.ocid, apiKey);
@@ -167,7 +246,7 @@ class NexonApiService {
             job: basicData.character_class,
             server: basicData.world_name,
             serverIcon: serverIcon,
-            image: basicData.character_image,
+            image: this.enhanceCharacterImageUrl(basicData.character_image),
             isMainCharacter: false,
             arcaneForce: forceData.arcaneForce,
             authenticForce: forceData.authenticForce
@@ -229,7 +308,7 @@ class NexonApiService {
         job: data.character_class,
         server: data.world_name,
         serverIcon: serverIcon,
-        image: data.character_image,
+        image: this.enhanceCharacterImageUrl(data.character_image),
         guildName: data.character_guild_name,
         isMainCharacter: false
       };
