@@ -1759,7 +1759,7 @@ export default function BossStatusPage() {
                 총 {filteredTotalBossCount}마리 {formatMeso(filteredTotalExpectedMeso)}
               </button>
               
-              <div className="space-y-4 md:space-y-0 md:space-x-4 md:flex md:flex-row lg:flex-col lg:space-x-0 lg:space-y-4 h-[300px] md:h-[200px] lg:h-[calc(100vh-400px)] overflow-y-auto">
+              <div className="space-y-4 h-[300px] md:h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto">
                 {/* 캐릭터별 박스 */}
                 {filteredCharacters.map((character) => {
                   const characterSelections = characterBossSelections[character.id] || [];
@@ -1772,7 +1772,7 @@ export default function BossStatusPage() {
                   }, 0);
 
                   return (
-                    <div key={character.id} className="p-3 bg-gray-50 rounded-lg space-y-3 md:flex-1 md:min-w-0">
+                    <div key={character.id} className="p-3 bg-gray-50 rounded-lg space-y-3">
                       {/* 캐릭터 정보 */}
                       <div className="flex items-center gap-3">
                         <Image
