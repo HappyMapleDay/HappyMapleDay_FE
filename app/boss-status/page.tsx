@@ -1234,7 +1234,7 @@ export default function BossStatusPage() {
                 </div>
               </div>
 
-              <div className="relative space-y-3 h-[300px] lg:h-[calc(100vh-350px)] overflow-y-auto overflow-x-visible pr-2">
+              <div className="relative space-y-3 h-[300px] md:h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto overflow-x-visible pr-2">
                 {isLoadingCharacters ? (
                   <div className="text-center py-8">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -1422,7 +1422,7 @@ export default function BossStatusPage() {
 
           {/* Center - Boss List */}
           <div className="col-span-12 md:col-span-6 xl:col-span-6 min-w-0 order-2 md:order-2 xl:order-2">
-            <div className="bg-white rounded-lg border border-gray-200 p-3">
+            <div className="bg-white rounded-lg border border-gray-200 p-3 lg:p-4">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">보스 목록</h3>
                 <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -1458,7 +1458,7 @@ export default function BossStatusPage() {
 
               {/* 프리셋 탭 제거: 프리셋은 모달 내부에서만 노출 */}
 
-              <div className="h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto">
+              <div className="h-[300px] md:h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto">
                 {isLoadingBosses ? (
                   <div className="text-center py-12">
                     <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
@@ -1764,7 +1764,7 @@ export default function BossStatusPage() {
                 총 {filteredTotalBossCount}마리 {formatMeso(filteredTotalExpectedMeso)}
               </button>
               
-              <div className="space-y-4 h-[300px] md:h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto">
+              <div className="space-y-4 h-[250px] md:h-[350px] lg:h-[calc(100vh-450px)] overflow-y-auto">
                 {/* 캐릭터별 박스 */}
                 {filteredCharacters.map((character) => {
                   const characterSelections = characterBossSelections[character.id] || [];
