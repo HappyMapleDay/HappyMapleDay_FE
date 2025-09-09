@@ -309,7 +309,8 @@ export default function OptimizationResultModal({
                                         onClick={() => {
                                           const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
                                           const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
-                                          const prevIndex = currentIndex > 0 ? currentIndex - 1 : availableDifficulties.length - 1;
+                                          const prevIndex = currentIndex > 0 ? currentIndex - 1 : -1;
+                                          if (prevIndex === -1) return; // 가장 낮은 난이도에서는 더 이상 낮출 수 없음
                                           const newDifficulty = availableDifficulties[prevIndex]?.difficulty || 'normal';
                                           
                                           const newSelections = [...characterSelections];
@@ -323,7 +324,41 @@ export default function OptimizationResultModal({
                                             [characterId]: newSelections
                                           }));
                                         }}
-                                        className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                        disabled={availableDifficulties.length <= 1 || (() => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          return currentIndex <= 0;
+                                        })()}
+                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                          availableDifficulties.length <= 1 || (() => {
+                                            const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                            const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                            return currentIndex <= 0;
+                                          })()
+                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                            : 'text-white'
+                                        }`}
+                                        style={(() => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          return availableDifficulties.length > 1 && currentIndex > 0 ? { 
+                                            backgroundColor: '#FF9100'
+                                          } : {};
+                                        })()}
+                                        onMouseEnter={(e) => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          if (availableDifficulties.length > 1 && currentIndex > 0) {
+                                            e.currentTarget.style.backgroundColor = '#E68200';
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          if (availableDifficulties.length > 1 && currentIndex > 0) {
+                                            e.currentTarget.style.backgroundColor = '#FF9100';
+                                          }
+                                        }}
                                       >
                                         &lt;
                                       </button>
@@ -344,7 +379,8 @@ export default function OptimizationResultModal({
                                         onClick={() => {
                                           const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
                                           const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
-                                          const nextIndex = currentIndex < availableDifficulties.length - 1 ? currentIndex + 1 : 0;
+                                          const nextIndex = currentIndex < availableDifficulties.length - 1 ? currentIndex + 1 : -1;
+                                          if (nextIndex === -1) return; // 가장 높은 난이도에서는 더 이상 올릴 수 없음
                                           const newDifficulty = availableDifficulties[nextIndex]?.difficulty || 'normal';
                                           
                                           const newSelections = [...characterSelections];
@@ -358,31 +394,128 @@ export default function OptimizationResultModal({
                                             [characterId]: newSelections
                                           }));
                                         }}
-                                        className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                        disabled={availableDifficulties.length <= 1 || (() => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          return currentIndex >= availableDifficulties.length - 1;
+                                        })()}
+                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                          availableDifficulties.length <= 1 || (() => {
+                                            const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                            const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                            return currentIndex >= availableDifficulties.length - 1;
+                                          })()
+                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                            : 'text-white'
+                                        }`}
+                                        style={(() => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          return availableDifficulties.length > 1 && currentIndex < availableDifficulties.length - 1 ? { 
+                                            backgroundColor: '#FF9100'
+                                          } : {};
+                                        })()}
+                                        onMouseEnter={(e) => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          if (availableDifficulties.length > 1 && currentIndex < availableDifficulties.length - 1) {
+                                            e.currentTarget.style.backgroundColor = '#E68200';
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          if (availableDifficulties.length > 1 && currentIndex < availableDifficulties.length - 1) {
+                                            e.currentTarget.style.backgroundColor = '#FF9100';
+                                          }
+                                        }}
                                       >
                                         &gt;
                                       </button>
                                     </div>
-                                    <input
-                                      type="number"
-                                      min="1"
-                                      max="6"
-                                      value={selection?.partySize || 1}
-                                      onChange={(e) => {
-                                        const newSelections = [...characterSelections];
-                                        newSelections[bossIndex] = {
-                                          ...newSelections[bossIndex],
-                                          bossId: bossId,
-                                          partySize: parseInt(e.target.value) || 1
-                                        };
-                                        setCustomizedSelections(prev => ({
-                                          ...prev,
-                                          [characterId]: newSelections
-                                        }));
-                                      }}
-                                      className="border border-gray-300 rounded px-2 py-1 text-xs w-16"
-                                    />
-                                    <span className="text-gray-600">인</span>
+                                    <div className="flex items-center gap-2">
+                                      <button 
+                                        onClick={() => {
+                                          const currentPartySize = selection?.partySize || 1;
+                                          if (currentPartySize > 1) {
+                                            const newSelections = [...characterSelections];
+                                            newSelections[bossIndex] = {
+                                              ...newSelections[bossIndex],
+                                              bossId: bossId,
+                                              partySize: currentPartySize - 1
+                                            };
+                                            setCustomizedSelections(prev => ({
+                                              ...prev,
+                                              [characterId]: newSelections
+                                            }));
+                                          }
+                                        }}
+                                        disabled={(selection?.partySize || 1) <= 1}
+                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                          (selection?.partySize || 1) <= 1 
+                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                            : 'text-white'
+                                        }`}
+                                        style={(selection?.partySize || 1) > 1 ? { 
+                                          backgroundColor: '#FF9100'
+                                        } : {}}
+                                        onMouseEnter={(e) => {
+                                          if ((selection?.partySize || 1) > 1) {
+                                            e.currentTarget.style.backgroundColor = '#E68200';
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          if ((selection?.partySize || 1) > 1) {
+                                            e.currentTarget.style.backgroundColor = '#FF9100';
+                                          }
+                                        }}
+                                      >
+                                        &lt;
+                                      </button>
+                                      <div className="flex items-center justify-center w-[60px] h-[18px] bg-white border border-gray-300 rounded-full">
+                                        <span className="text-sm font-medium text-center">
+                                          {selection?.partySize || 1}
+                                        </span>
+                                      </div>
+                                      <button 
+                                        onClick={() => {
+                                          const currentPartySize = selection?.partySize || 1;
+                                          if (currentPartySize < 6) {
+                                            const newSelections = [...characterSelections];
+                                            newSelections[bossIndex] = {
+                                              ...newSelections[bossIndex],
+                                              bossId: bossId,
+                                              partySize: currentPartySize + 1
+                                            };
+                                            setCustomizedSelections(prev => ({
+                                              ...prev,
+                                              [characterId]: newSelections
+                                            }));
+                                          }
+                                        }}
+                                        disabled={(selection?.partySize || 1) >= 6}
+                                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs ${
+                                          (selection?.partySize || 1) >= 6 
+                                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                            : 'text-white'
+                                        }`}
+                                        style={(selection?.partySize || 1) < 6 ? { 
+                                          backgroundColor: '#FF9100'
+                                        } : {}}
+                                        onMouseEnter={(e) => {
+                                          if ((selection?.partySize || 1) < 6) {
+                                            e.currentTarget.style.backgroundColor = '#E68200';
+                                          }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          if ((selection?.partySize || 1) < 6) {
+                                            e.currentTarget.style.backgroundColor = '#FF9100';
+                                          }
+                                        }}
+                                      >
+                                        &gt;
+                                      </button>
+                                    </div>
                                   </div>
                                 </div>
                               );

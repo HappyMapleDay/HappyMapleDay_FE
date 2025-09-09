@@ -611,10 +611,13 @@ export default function BossStatusPage() {
     let newIndex: number;
 
     if (direction === 'next') {
-      newIndex = currentIndex < boss.difficulties.length - 1 ? currentIndex + 1 : 0;
+      newIndex = currentIndex < boss.difficulties.length - 1 ? currentIndex + 1 : -1;
     } else {
-      newIndex = currentIndex > 0 ? currentIndex - 1 : boss.difficulties.length - 1;
+      newIndex = currentIndex > 0 ? currentIndex - 1 : -1;
     }
+
+    // 더 이상 변경할 수 없는 경우 (가장 낮은/높은 난이도)
+    if (newIndex === -1) return;
 
     const newDifficulty = boss.difficulties[newIndex].difficulty;
 
@@ -925,42 +928,8 @@ export default function BossStatusPage() {
 
   // 최적화 추천에서 제외된 보스인지 확인하는 함수
   const isExcludedFromOptimization = (characterId: string, bossId: string): boolean => {
-    if (!optimizationResult) return false;
-    
-    const world = optimizationResult.worlds.find(w => 
-      w.characters.some(c => c.characterId.toString() === characterId)
-    );
-    if (!world) return false;
-
-    const characterRec = world.characters.find(c => c.characterId.toString() === characterId);
-    if (!characterRec) return false;
-
-    // 현재 선택된 보스 정보 찾기
-    const currentSelection = characterBossSelections[characterId]?.find(sel => sel.bossId === bossId);
-    if (!currentSelection) return false;
-
-    // 추천된 보스 목록에서 현재 보스와 매칭되는 것이 있는지 확인
-    return !characterRec.bosses.some(recommended => {
-      // API 보스 ID를 UI 보스 ID로 변환하여 비교
-      const apiBoss = apiBosses.find(boss => boss.bossId === recommended.bossId);
-      if (!apiBoss) return false;
-
-      const uiBossId = apiBoss.bossNameEn || apiBoss.englishName;
-      if (!uiBossId) return false;
-
-      // 난이도 매핑 (API -> UI)
-      const difficultyMap: Record<string, string> = {
-        '이지': 'easy',
-        '노말': 'normal', 
-        '하드': 'hard',
-        '카오스': 'chaos',
-        '익스트림': 'extreme'
-      };
-      
-      const uiDifficulty = difficultyMap[apiBoss.difficulty] || apiBoss.difficultyEn || 'normal';
-
-      return uiBossId === currentSelection.bossId && uiDifficulty === currentSelection.selectedDifficulty;
-    });
+    // 최적화 배경색 변경 기능 비활성화 - 모달에서 최적화 상태 확인 가능
+    return false;
   };
 
   const formatMeso = (meso: number) => {
@@ -1554,7 +1523,22 @@ export default function BossStatusPage() {
                                         e.stopPropagation();
                                         handleDifficultyChange(selection.bossId, 'prev');
                                       }}
-                                      className="w-6 h-6 xl:w-7 xl:h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                      disabled={(() => {
+                                        const boss = allBosses.find(b => b.id === selection.bossId);
+                                        if (!boss) return true;
+                                        const currentIndex = boss.difficulties.findIndex(d => d.difficulty === selection.selectedDifficulty);
+                                        return currentIndex <= 0;
+                                      })()}
+                                      className={`w-6 h-6 xl:w-7 xl:h-7 rounded-full flex items-center justify-center text-xs ${
+                                        (() => {
+                                          const boss = allBosses.find(b => b.id === selection.bossId);
+                                          if (!boss) return true;
+                                          const currentIndex = boss.difficulties.findIndex(d => d.difficulty === selection.selectedDifficulty);
+                                          return currentIndex <= 0;
+                                        })()
+                                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                          : 'bg-gray-200 hover:bg-gray-300'
+                                      }`}
                                     >
                                       &lt;
                                     </button>
@@ -1576,7 +1560,22 @@ export default function BossStatusPage() {
                                         e.stopPropagation();
                                         handleDifficultyChange(selection.bossId, 'next');
                                       }}
-                                      className="w-6 h-6 xl:w-7 xl:h-7 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                      disabled={(() => {
+                                        const boss = allBosses.find(b => b.id === selection.bossId);
+                                        if (!boss) return true;
+                                        const currentIndex = boss.difficulties.findIndex(d => d.difficulty === selection.selectedDifficulty);
+                                        return currentIndex >= boss.difficulties.length - 1;
+                                      })()}
+                                      className={`w-6 h-6 xl:w-7 xl:h-7 rounded-full flex items-center justify-center text-xs ${
+                                        (() => {
+                                          const boss = allBosses.find(b => b.id === selection.bossId);
+                                          if (!boss) return true;
+                                          const currentIndex = boss.difficulties.findIndex(d => d.difficulty === selection.selectedDifficulty);
+                                          return currentIndex >= boss.difficulties.length - 1;
+                                        })()
+                                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
+                                          : 'bg-gray-200 hover:bg-gray-300'
+                                      }`}
                                     >
                                       &gt;
                                     </button>
