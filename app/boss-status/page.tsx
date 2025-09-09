@@ -1386,7 +1386,18 @@ export default function BossStatusPage() {
                         </button>
                       </div>
                       <div className="flex gap-3">
-                        <Image src={hoveredCharacter.image} alt={hoveredCharacter.name} width={96} height={96} className="rounded-xl w-20 h-20 md:w-24 md:h-24" />
+                        <img
+                          src={hoveredCharacter.image}
+                          alt={hoveredCharacter.name}
+                          className="rounded-xl w-24 h-24 md:w-28 md:h-28"
+                          style={{
+                            objectFit: 'none',
+                            objectPosition: '55% 58%',
+                            transform: 'scale(0.8)',
+                            transformOrigin: '55% 58%',
+                            imageRendering: 'crisp-edges'
+                          }}
+                        />
                         <div className="min-w-0">
                           <div className="font-semibold text-gray-900 truncate text-sm md:text-base">{hoveredCharacter.name}</div>
                           <div className="text-xs text-gray-500 truncate">
