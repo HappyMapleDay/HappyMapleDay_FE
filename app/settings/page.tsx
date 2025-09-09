@@ -128,26 +128,47 @@ export default function SettingsPage() {
                 height={32}
                 className="rounded-lg"
               />
-              <span className="text-xl font-bold text-orange-500">메요일조아</span>
+              <span className="text-xl font-bold" style={{ color: '#FF9100' }}>메요일조아</span>
             </Link>
 
             {/* Navigation */}
             <nav className="flex items-center gap-8">
             <Link 
               href="/boss-status" 
-              className="text-gray-500 hover:text-orange-500 transition-colors"
+              className="text-gray-500 transition-colors"
+              style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#FF9100';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#6B7280';
+              }}
             >
               보돌 현황
             </Link>
             <Link 
               href="/boss-history" 
-              className="text-gray-500 hover:text-orange-500 transition-colors"
+              className="text-gray-500 transition-colors"
+              style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#FF9100';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#6B7280';
+              }}
             >
               보돌 히스토리
             </Link>
             <Link 
               href="/item-history" 
-              className="text-gray-500 hover:text-orange-500 transition-colors"
+              className="text-gray-500 transition-colors"
+              style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#FF9100';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#6B7280';
+              }}
             >
               물욕템 히스토리
             </Link>
@@ -159,12 +180,19 @@ export default function SettingsPage() {
             <span className="text-sm text-gray-600">
               {mainCharacterName || '사용자'}님
             </span>
-            <Link href="/settings" className="text-orange-500 font-medium">
+            <Link href="/settings" className="font-medium" style={{ color: '#FF9100' }}>
               설정
             </Link>
             <button 
               onClick={logout}
-              className="text-gray-600 hover:text-orange-500 transition-colors"
+              className="text-gray-600 transition-colors"
+              style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#FF9100';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#4B5563';
+              }}
             >
               로그아웃
             </button>
@@ -238,7 +266,14 @@ export default function SettingsPage() {
               <div className="flex items-center gap-3 mb-4">
                 <button
                   onClick={() => setCurrentView('main')}
-                  className="text-gray-600 hover:text-orange-500 transition-colors py-2"
+                  className="text-gray-600 transition-colors py-2"
+                  style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#FF9100';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#4B5563';
+                  }}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -261,7 +296,16 @@ export default function SettingsPage() {
                   placeholder="닉네임으로 검색해주세요."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2"
+                  style={{ '--focus-ring-color': '#FF9100' } as React.CSSProperties}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#FF9100';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#D1D5DB';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
                 <button className="absolute right-3 top-1/2 transform -translate-y-1/2">
                   <svg className="w-5 h-5" style={{ color: '#FF9100' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -279,9 +323,10 @@ export default function SettingsPage() {
                   onClick={() => setSelectedCharacter(character)}
                   className={`flex items-center gap-4 p-4 rounded-lg border cursor-pointer transition-colors ${
                     selectedCharacter?.id === character.id
-                      ? 'border-orange-500 bg-orange-50'
+                      ? ''
                       : 'border-gray-200 hover:border-gray-300'
                   }`}
+                  style={selectedCharacter?.id === character.id ? { borderColor: '#FF9100', backgroundColor: '#FFF3E0' } : {}}
                 >
                   <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                     <span className="text-2xl">{character.job === 'warrior' ? '⚔️' : character.job === 'mage' ? '🔮' : character.job === 'archer' ? '🏹' : character.job === 'thief' ? '🗡️' : '🏴‍☠️'}</span>
@@ -327,7 +372,14 @@ export default function SettingsPage() {
                 {/* 뒤로가기 버튼 */}
                 <button
                   onClick={() => setCurrentView('main')}
-                  className="absolute left-0 text-gray-600 hover:text-orange-500 transition-colors py-2"
+                  className="absolute left-0 text-gray-600 transition-colors py-2"
+                  style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = '#FF9100';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#4B5563';
+                  }}
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -370,7 +422,16 @@ export default function SettingsPage() {
                       }
                     }}
                     placeholder="새로운 비밀번호를 입력해주세요"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 outline-none transition-colors"
+                    style={{ '--focus-ring-color': '#FF9100', '--focus-border-color': '#FF9100' } as React.CSSProperties}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#FF9100';
+                      e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#D1D5DB';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                   />
                   {passwordError && passwordError !== "비밀번호가 일치하지 않습니다." && (
                     <p className="text-red-500 text-sm mt-2">{passwordError}</p>
@@ -388,7 +449,16 @@ export default function SettingsPage() {
                       }
                     }}
                     placeholder="확인을 위해 비밀번호를 다시 입력해주세요"
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 outline-none transition-colors"
+                    style={{ '--focus-ring-color': '#FF9100', '--focus-border-color': '#FF9100' } as React.CSSProperties}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = '#FF9100';
+                      e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = '#D1D5DB';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
                   />
                   {passwordError && passwordError === "비밀번호가 일치하지 않습니다." && (
                     <p className="text-red-500 text-sm mt-2">{passwordError}</p>

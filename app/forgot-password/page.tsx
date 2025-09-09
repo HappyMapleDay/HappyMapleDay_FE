@@ -67,7 +67,7 @@ export default function ForgotPassword() {
             <form className="space-y-6" onSubmit={handleSubmit}>
               {/* 아이디 입력 */}
               <div>
-                <label htmlFor="username" className="block text-sm font-medium text-orange-500 mb-2">
+                <label htmlFor="username" className="block text-sm font-medium mb-2" style={{ color: '#FF9100' }}>
                   아이디
                 </label>
                 <input
@@ -77,13 +77,22 @@ export default function ForgotPassword() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="본캐 닉네임을 입력해주세요. (예: 뱌꺄)"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 outline-none transition-colors"
+                  style={{ '--focus-ring-color': '#FF9100', '--focus-border-color': '#FF9100' } as React.CSSProperties}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#FF9100';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#D1D5DB';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
 
               {/* API Key 입력 */}
               <div>
-                <label htmlFor="apiKey" className="block text-sm font-medium text-orange-500 mb-2">
+                <label htmlFor="apiKey" className="block text-sm font-medium mb-2" style={{ color: '#FF9100' }}>
                   메이플스토리 API key
                 </label>
                 <input
@@ -93,7 +102,16 @@ export default function ForgotPassword() {
                   value={apiKey}
                   onChange={(e) => setApiKey(e.target.value)}
                   placeholder="메이플스토리 API 키를 입력해주세요."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-colors"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 outline-none transition-colors"
+                  style={{ '--focus-ring-color': '#FF9100', '--focus-border-color': '#FF9100' } as React.CSSProperties}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#FF9100';
+                    e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#D1D5DB';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
                 />
               </div>
 
@@ -122,7 +140,7 @@ export default function ForgotPassword() {
             <div className="space-y-6">
               {/* 임시 비밀번호 제목 및 설명 */}
               <div>
-                <h2 className="text-lg font-medium text-orange-500 mb-2">임시 비밀번호 발급 완료</h2>
+                <h2 className="text-lg font-medium mb-2" style={{ color: '#FF9100' }}>임시 비밀번호 발급 완료</h2>
                 <p className="text-sm text-gray-600 mb-6">
                   임시 비밀번호가 발급되었습니다. 아래 비밀번호로 로그인하신 후 비밀번호를 변경해주세요.
                 </p>
@@ -155,7 +173,14 @@ export default function ForgotPassword() {
           <div className="mt-6 text-center">
             <Link 
               href="/" 
-              className="text-sm text-gray-500 hover:text-orange-500 transition-colors"
+              className="text-sm text-gray-500 transition-colors"
+              style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = '#FF9100';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = '#6B7280';
+              }}
             >
               로그인으로 돌아가기
             </Link>

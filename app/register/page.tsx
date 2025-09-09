@@ -220,7 +220,7 @@ export default function Register() {
             <form className="space-y-6" onSubmit={handleSubmit}>
               {/* API Key 입력 */}
               <div>
-                <label htmlFor="apiKey" className="block text-sm font-medium text-orange-500 mb-2">
+                <label htmlFor="apiKey" className="block text-sm font-medium mb-2" style={{ color: '#FF9100' }}>
                   메이플스토리 API key
                 </label>
                 <input
@@ -259,7 +259,7 @@ export default function Register() {
             <div className="space-y-6">
               {/* API Key 입력 (읽기 전용) */}
               <div>
-                <label htmlFor="apiKey" className="block text-sm font-medium text-orange-500 mb-2">
+                <label htmlFor="apiKey" className="block text-sm font-medium mb-2" style={{ color: '#FF9100' }}>
                   메이플스토리 API key
                 </label>
                 <input
@@ -294,7 +294,7 @@ export default function Register() {
 
               {/* 본캐 선택 섹션 */}
               <div>
-                <h2 className="text-lg font-medium text-orange-500 mb-2">본캐 선택 (필수)</h2>
+                <h2 className="text-lg font-medium mb-2" style={{ color: '#FF9100' }}>본캐 선택 (필수)</h2>
                 <p className="text-sm text-gray-600 mb-4">
                   선택한 본캐의 닉네임은 로그인 시 필요한 ID로 활용됩니다.
                   <br />
@@ -309,9 +309,20 @@ export default function Register() {
                       onClick={() => handleCharacterSelect(character)}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                         selectedCharacter?.id === character.id
-                          ? "border-orange-500 bg-orange-50"
-                          : "border-gray-200 bg-white hover:bg-orange-100"
+                          ? ""
+                          : "border-gray-200 bg-white"
                       }`}
+                      style={selectedCharacter?.id === character.id ? { borderColor: '#FF9100', backgroundColor: '#FFF3E0' } : {}}
+                      onMouseEnter={(e) => {
+                        if (selectedCharacter?.id !== character.id) {
+                          e.currentTarget.style.backgroundColor = '#FFF3E0';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedCharacter?.id !== character.id) {
+                          e.currentTarget.style.backgroundColor = 'white';
+                        }
+                      }}
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
@@ -363,7 +374,7 @@ export default function Register() {
                 )}
 
                 {/* 안내 텍스트 */}
-                <p className="text-sm text-orange-500 text-center mt-4">
+                <p className="text-sm text-center mt-4" style={{ color: '#FF9100' }}>
                   캐릭터를 클릭하여 본캐를 선택해주세요
                 </p>
               </div>
@@ -371,7 +382,7 @@ export default function Register() {
               {/* 보돌캐 선택 섹션 - 본캐 선택 후에만 표시 */}
               {selectedCharacter && (
                 <div className="mt-8">
-                  <h2 className="text-lg font-medium text-orange-500 mb-2">보돌캐 선택</h2>
+                  <h2 className="text-lg font-medium mb-2" style={{ color: '#FF9100' }}>보돌캐 선택</h2>
                   <p className="text-sm text-gray-600 mb-4">
                     보스돌이를 도는 캐릭터들을 선택해주세요.
                     <br />
@@ -389,9 +400,20 @@ export default function Register() {
                         onClick={() => handleBossCharacterToggle(character)}
                         className={`p-4 border rounded-lg cursor-pointer transition-colors ${
                           selectedBossCharacters.some(c => c.id === character.id)
-                            ? "border-orange-500 bg-orange-50"
-                            : "border-gray-200 bg-white hover:bg-orange-100"
+                            ? ""
+                            : "border-gray-200 bg-white"
                         }`}
+                        style={selectedBossCharacters.some(c => c.id === character.id) ? { borderColor: '#FF9100' } : {}}
+                        onMouseEnter={(e) => {
+                          if (!selectedBossCharacters.some(c => c.id === character.id)) {
+                            e.currentTarget.style.backgroundColor = '#FFF3E0';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!selectedBossCharacters.some(c => c.id === character.id)) {
+                            e.currentTarget.style.backgroundColor = 'white';
+                          }
+                        }}
                       >
                         <div className="flex items-center gap-4">
                           <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
@@ -436,7 +458,7 @@ export default function Register() {
                   </div>
 
                   {/* 안내 텍스트 */}
-                  <p className="text-sm text-orange-500 text-center mt-4">
+                  <p className="text-sm text-center mt-4" style={{ color: '#FF9100' }}>
                     캐릭터를 클릭하여 보돌캐를 선택해주세요
                   </p>
                 </div>
@@ -534,7 +556,14 @@ export default function Register() {
             <div className="mt-6 text-center">
               <Link 
                 href="/" 
-                className="text-sm text-gray-500 hover:text-orange-500 transition-colors"
+                className="text-sm text-gray-500 transition-colors"
+                style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#FF9100';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#6B7280';
+                }}
               >
                 로그인으로 돌아가기
               </Link>

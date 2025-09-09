@@ -1133,7 +1133,7 @@ export default function BossStatusPage() {
                   onClick={() => handleServerChange(server)}
                   className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors shrink-0 whitespace-nowrap ${
                     selectedServer === server
-                      ? 'bg-orange-100 text-orange-700'
+                      ? 'text-white'
                       : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
@@ -1212,7 +1212,7 @@ export default function BossStatusPage() {
               <div className="relative space-y-3 h-[300px] md:h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto overflow-x-visible pr-2">
                 {isLoadingCharacters ? (
                   <div className="text-center py-8">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderBottomColor: '#FF9100' }}></div>
                     <p className="mt-2 text-gray-500">캐릭터 목록을 불러오는 중...</p>
                   </div>
                 ) : filteredCharacters.length === 0 ? (
@@ -1227,9 +1227,30 @@ export default function BossStatusPage() {
                     key={character.id}
                     className={`relative p-3 rounded-lg border cursor-pointer transition-all ${
                       selectedCharacterId === character.id
-                        ? 'border-orange-500 bg-orange-50'
+                        ? ''
                         : 'border-gray-200 hover:border-gray-300 bg-white'
-                    } ${character.isMainCharacter ? 'border-l-4 border-l-orange-500' : ''}`}
+                    } ${character.isMainCharacter ? 'border-l-4' : ''}`}
+                    style={character.isMainCharacter ? 
+                      (selectedCharacterId === character.id ? 
+                        { 
+                          borderLeftColor: '#FF9100', 
+                          borderTopColor: '#FF9100',
+                          borderRightColor: '#FF9100',
+                          borderBottomColor: '#FF9100',
+                          backgroundColor: '#FFF3E0' 
+                        } : 
+                        { borderLeftColor: '#FF9100' }
+                      ) : 
+                      selectedCharacterId === character.id ? 
+                        { 
+                          borderTopColor: '#FF9100',
+                          borderRightColor: '#FF9100',
+                          borderBottomColor: '#FF9100',
+                          borderLeftColor: '#FF9100',
+                          backgroundColor: '#FFF3E0' 
+                        } : 
+                        {}
+                    }
                   >
                     {/* 본캐 표시 또는 삭제 버튼 */}
                     {character.isMainCharacter ? (
@@ -1299,7 +1320,14 @@ export default function BossStatusPage() {
                             }
                             setTooltipPos({ x, y: top, placement });
                           }}
-                          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 translate-y-[14px] px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors shadow-sm whitespace-nowrap"
+                          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 translate-y-[14px] px-2 py-1 text-xs rounded-md transition-colors shadow-sm whitespace-nowrap"
+                          style={{ backgroundColor: '#FF9100', color: 'white' }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = '#E6820A';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = '#FF9100';
+                          }}
                         >
                           세부스탯
                         </button>
@@ -1358,7 +1386,7 @@ export default function BossStatusPage() {
                         </button>
                       </div>
                       <div className="flex gap-3">
-                        <Image src={hoveredCharacter.image} alt={hoveredCharacter.name} width={96} height={96} className="rounded-xl w-16 h-16 md:w-24 md:h-24" />
+                        <Image src={hoveredCharacter.image} alt={hoveredCharacter.name} width={96} height={96} className="rounded-xl w-20 h-20 md:w-24 md:h-24" />
                         <div className="min-w-0">
                           <div className="font-semibold text-gray-900 truncate text-sm md:text-base">{hoveredCharacter.name}</div>
                           <div className="text-xs text-gray-500 truncate">
@@ -1437,7 +1465,7 @@ export default function BossStatusPage() {
                       className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
                         selectedBossSelections.filter(sel => !sel.isCleared).length === 0
                           ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                          : 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                          : 'text-white hover:opacity-80'
                       }`}
                       title={
                         selectedBossSelections.filter(sel => !sel.isCleared).length === 0
@@ -1464,7 +1492,7 @@ export default function BossStatusPage() {
               <div className="h-[300px] md:h-[400px] lg:h-[calc(100vh-400px)] overflow-y-auto">
                 {isLoadingBosses ? (
                   <div className="text-center py-12">
-                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                    <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2" style={{ borderBottomColor: '#FF9100' }}></div>
                     <p className="mt-2 text-gray-500">보스 데이터를 불러오는 중...</p>
                   </div>
                 ) : selectedCharacterId ? (
@@ -1743,7 +1771,16 @@ export default function BossStatusPage() {
                         console.log('All bosses available:', allBosses.length);
                         setIsBossModalOpen(true);
                       }}
-                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 hover:border-orange-300 hover:text-orange-600 transition-colors"
+                      className="w-full p-4 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 transition-colors"
+                      style={{ '--hover-border-color': '#FF9100', '--hover-text-color': '#FF9100' } as React.CSSProperties}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#FF9100';
+                        e.currentTarget.style.color = '#FF9100';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#D1D5DB';
+                        e.currentTarget.style.color = '#6B7280';
+                      }}
                     >
                       + 보스 추가/수정
                     </button>

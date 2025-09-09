@@ -360,7 +360,7 @@ export default function AddBossCharacterModal({
                   onClick={() => toggleCharacterSelection(character.id)}
                   className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
                     isSelected 
-                      ? 'bg-orange-50' 
+                      ? '' 
                       : 'border-gray-200 hover:border-gray-300 bg-gray-50'
                   }`}
                   style={isSelected ? { 
