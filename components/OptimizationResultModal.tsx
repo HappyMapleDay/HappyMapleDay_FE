@@ -54,6 +54,11 @@ export default function OptimizationResultModal({
       '오로라': 'aurora',
       '아케인': 'arcane',
       '노바': 'nova',
+      '챌린저스': 'challengers',
+      '챌린저스2': 'challengers',
+      '챌린저스3': 'challengers',
+      '챌린저스4': 'challengers',
+      '챌린저스5': 'challengers',
       '버닝': 'burning',
       '버닝2': 'burning2',
       '버닝3': 'burning3',
@@ -91,30 +96,12 @@ export default function OptimizationResultModal({
 
   const handleApply = () => {
     if (isCustomizing) {
+      console.log('커스텀 선택으로 적용:', customizedSelections);
       onApplyOptimization(customizedSelections);
     } else {
-      // 기본 최적화 결과 적용
-      const defaultSelections: Record<string, BossSelection[]> = {};
-      result.worlds.forEach(world => {
-        world.characters.forEach(characterRec => {
-          const characterId = characterRec.characterId.toString();
-          const selections: BossSelection[] = characterRec.bosses.map(recommended => {
-            const apiBoss = allBosses.find(boss => boss.bossId === recommended.bossId);
-            const uiBossId = apiBoss?.bossNameEn || apiBoss?.englishName || recommended.bossId.toString();
-            
-            return {
-              bossId: uiBossId,
-              selectedDifficulty: 'normal', // 기본값
-              partySize: recommended.partySize || 1,
-              isGoldDrop: false,
-              desireDropItems: [],
-              isCleared: false
-            };
-          });
-          defaultSelections[characterId] = selections;
-        });
-      });
-      onApplyOptimization(defaultSelections);
+      // 기본 적용은 페이지의 매핑 로직을 사용하도록 선택을 전달하지 않음
+      console.log('기본 최적화 결과로 적용: 페이지 로직 사용');
+      onApplyOptimization();
     }
     onClose();
   };
@@ -127,12 +114,13 @@ export default function OptimizationResultModal({
       world.characters.forEach(characterRec => {
         const characterId = characterRec.characterId.toString();
         const selections: BossSelection[] = characterRec.bosses.map(recommended => {
-          const apiBoss = allBosses.find(boss => boss.bossId === recommended.bossId);
-          const uiBossId = apiBoss?.bossNameEn || apiBoss?.englishName || recommended.bossId.toString();
+          // 보스 이름으로 직접 찾기
+          const actualBoss = allBosses.find(b => b.name === recommended.bossName);
+          const bossId = actualBoss?.id || recommended.bossName;
           
           return {
-            bossId: uiBossId,
-            selectedDifficulty: 'normal',
+            bossId: bossId,
+            selectedDifficulty: actualBoss?.difficulties?.[0]?.difficulty || 'normal',
             partySize: recommended.partySize || 1,
             isGoldDrop: false,
             desireDropItems: [],
@@ -147,7 +135,7 @@ export default function OptimizationResultModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg max-w-4xl w-full mx-4 max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg max-w-2xl w-1/2 mx-4 max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="p-6 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -205,27 +193,34 @@ export default function OptimizationResultModal({
                       return (
                         <div key={charIndex} className="bg-gray-50 p-3 rounded">
                           <div className="flex items-center gap-3 mb-2">
-                            <img
-                              src={characterInfo?.image || '/image/logo.png'}
-                              alt={characterInfo?.name || '캐릭터'}
-                              width={32}
-                              height={32}
-                              className="rounded-full"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = '/image/logo.png';
-                              }}
-                            />
-                            <h4 className="font-medium">{characterInfo?.name || '캐릭터'}</h4>
+                            <div className="w-[85px] h-[90px] rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                              <img
+                                src={characterInfo?.image || '/image/logo.png'}
+                                alt={characterInfo?.name || '캐릭터'}
+                                className="w-full h-full"
+                                style={{
+                                  objectFit: 'none',
+                                  objectPosition: '55% 58%',
+                                  transform: 'scale(0.8)',
+                                  transformOrigin: '55% 58%',
+                                  imageRendering: 'crisp-edges'
+                                }}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/image/logo.png';
+                                }}
+                              />
+                            </div>
+                            <h4 className="text-lg font-bold">{characterInfo?.name || '캐릭터'}</h4>
                           </div>
                           <div className="space-y-2">
                             {character.bosses.map((boss, bossIndex) => (
-                              <div key={bossIndex} className="flex items-center justify-between text-sm">
-                                <span>{boss.bossName}</span>
+                              <div key={bossIndex} className="flex items-center justify-between text-base">
+                                <span className="font-medium">{boss.bossName}</span>
                                 <div className="flex items-center gap-4">
-                                  <span className="text-gray-600">{boss.difficulty}</span>
-                                  <span className="text-gray-600">{boss.partySize}인</span>
-                                  <span className="font-medium" style={{ color: '#FF9100' }}>
+                                  <span className="text-gray-600 font-medium">{boss.difficulty}</span>
+                                  <span className="text-gray-600 font-medium">{boss.partySize}인</span>
+                                  <span className="font-bold" style={{ color: '#FF9100' }}>
                                     {formatMeso(boss.crystalPrice)} 메소
                                   </span>
                                 </div>
@@ -274,49 +269,100 @@ export default function OptimizationResultModal({
                       return (
                         <div key={charIndex} className="bg-gray-50 p-3 rounded">
                           <div className="flex items-center gap-3 mb-2">
-                            <img
-                              src={characterInfo?.image || '/image/logo.png'}
-                              alt={characterInfo?.name || '캐릭터'}
-                              width={32}
-                              height={32}
-                              className="rounded-full"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = '/image/logo.png';
-                              }}
-                            />
-                            <h4 className="font-medium">{characterInfo?.name || '캐릭터'}</h4>
+                            <div className="w-[85px] h-[90px] rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                              <img
+                                src={characterInfo?.image || '/image/logo.png'}
+                                alt={characterInfo?.name || '캐릭터'}
+                                className="w-full h-full"
+                                style={{
+                                  objectFit: 'none',
+                                  objectPosition: '55% 58%',
+                                  transform: 'scale(0.8)',
+                                  transformOrigin: '55% 58%',
+                                  imageRendering: 'crisp-edges'
+                                }}
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = '/image/logo.png';
+                                }}
+                              />
+                            </div>
+                            <h4 className="text-lg font-bold">{characterInfo?.name || '캐릭터'}</h4>
                           </div>
                           <div className="space-y-2">
                             {character.bosses.map((boss, bossIndex) => {
                               const selection = characterSelections[bossIndex];
-                              const uiBossId = allBosses.find(b => b.bossId === boss.bossId)?.bossNameEn || boss.bossId.toString();
+                              
+                              // 보스 이름으로 직접 찾기 (boss-status와 동일한 방식)
+                              const actualBoss = allBosses.find(b => b.name === boss.bossName);
+                              const availableDifficulties = actualBoss?.difficulties || [];
+                              
+                              // 보스 ID 설정 (커스텀 선택에서 사용할 올바른 ID)
+                              const bossId = actualBoss?.id || boss.bossName;
                               
                               return (
-                                <div key={bossIndex} className="flex items-center justify-between text-sm">
-                                  <span>{boss.bossName}</span>
+                                <div key={bossIndex} className="flex items-center justify-between text-base">
+                                  <span className="font-medium">{boss.bossName}</span>
                                   <div className="flex items-center gap-2">
-                                    <select
-                                      value={selection?.selectedDifficulty || 'normal'}
-                                      onChange={(e) => {
-                                        const newSelections = [...characterSelections];
-                                        newSelections[bossIndex] = {
-                                          ...newSelections[bossIndex],
-                                          selectedDifficulty: e.target.value as any
-                                        };
-                                        setCustomizedSelections(prev => ({
-                                          ...prev,
-                                          [characterId]: newSelections
-                                        }));
-                                      }}
-                                      className="border border-gray-300 rounded px-2 py-1 text-xs"
-                                    >
-                                      <option value="easy">이지</option>
-                                      <option value="normal">노말</option>
-                                      <option value="hard">하드</option>
-                                      <option value="chaos">카오스</option>
-                                      <option value="extreme">익스트림</option>
-                                    </select>
+                                    <div className="flex items-center gap-2">
+                                      <button 
+                                        onClick={() => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          const prevIndex = currentIndex > 0 ? currentIndex - 1 : availableDifficulties.length - 1;
+                                          const newDifficulty = availableDifficulties[prevIndex]?.difficulty || 'normal';
+                                          
+                                          const newSelections = [...characterSelections];
+                                          newSelections[bossIndex] = {
+                                            ...newSelections[bossIndex],
+                                            bossId: bossId,
+                                            selectedDifficulty: newDifficulty
+                                          };
+                                          setCustomizedSelections(prev => ({
+                                            ...prev,
+                                            [characterId]: newSelections
+                                          }));
+                                        }}
+                                        className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                      >
+                                        &lt;
+                                      </button>
+                                      <div className="flex items-center justify-center w-[60px] h-[18px]">
+                                        <img
+                                          src={`/image/boss-difficulty/difficulty-${selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal'}.png`}
+                                          alt={selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal'}
+                                          width={60}
+                                          height={18}
+                                          className="h-4 object-contain"
+                                          style={{ 
+                                            imageRendering: 'auto',
+                                            maxWidth: 'none'
+                                          }}
+                                        />
+                                      </div>
+                                      <button 
+                                        onClick={() => {
+                                          const currentDifficulty = selection?.selectedDifficulty || availableDifficulties[0]?.difficulty || 'normal';
+                                          const currentIndex = availableDifficulties.findIndex(d => d.difficulty === currentDifficulty);
+                                          const nextIndex = currentIndex < availableDifficulties.length - 1 ? currentIndex + 1 : 0;
+                                          const newDifficulty = availableDifficulties[nextIndex]?.difficulty || 'normal';
+                                          
+                                          const newSelections = [...characterSelections];
+                                          newSelections[bossIndex] = {
+                                            ...newSelections[bossIndex],
+                                            bossId: bossId,
+                                            selectedDifficulty: newDifficulty
+                                          };
+                                          setCustomizedSelections(prev => ({
+                                            ...prev,
+                                            [characterId]: newSelections
+                                          }));
+                                        }}
+                                        className="w-6 h-6 bg-gray-200 rounded-full flex items-center justify-center text-xs hover:bg-gray-300"
+                                      >
+                                        &gt;
+                                      </button>
+                                    </div>
                                     <input
                                       type="number"
                                       min="1"
@@ -326,6 +372,7 @@ export default function OptimizationResultModal({
                                         const newSelections = [...characterSelections];
                                         newSelections[bossIndex] = {
                                           ...newSelections[bossIndex],
+                                          bossId: bossId,
                                           partySize: parseInt(e.target.value) || 1
                                         };
                                         setCustomizedSelections(prev => ({

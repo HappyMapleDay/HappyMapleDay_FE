@@ -838,13 +838,19 @@ export default function BossStatusPage() {
   // 최적화 추천 적용 함수 (API 응답의 모든 보스를 보스 목록에 적용)
   const handleApplyOptimization = (customizedSelections?: Record<string, BossSelection[]>) => {
     if (!optimizationResult) return;
+    
+    console.log('handleApplyOptimization 호출됨:', { customizedSelections, optimizationResult });
 
     // 커스텀 선택이 있으면 그것을 사용, 없으면 기본 최적화 결과 사용
     let newCharacterBossSelections: Record<string, BossSelection[]>;
     
     if (customizedSelections) {
-      // 커스텀 선택 사용
-      newCharacterBossSelections = customizedSelections;
+      // 커스텀 선택 사용 - 기존 선택을 유지하면서 커스텀 선택만 업데이트
+      newCharacterBossSelections = { ...characterBossSelections };
+      Object.keys(customizedSelections).forEach(characterId => {
+        newCharacterBossSelections[characterId] = customizedSelections[characterId];
+      });
+      console.log('커스텀 선택 적용됨:', newCharacterBossSelections);
     } else {
       // 기본 최적화 결과 적용
       newCharacterBossSelections = { ...characterBossSelections };
@@ -1325,9 +1331,11 @@ export default function BossStatusPage() {
                           }}
                         />
                       </div>
-                                              <div className="flex-1 min-w-0">
-                          <span className="text-xs text-gray-500 mb-0 pb-0 block">Lv.{character.level}</span>
-                          <div className="font-medium text-gray-900 truncate mb-0.5 flex items-center">
+                      <div className={`flex-1 min-w-0 rounded-lg p-3 ml-1 ${
+                        selectedCharacterId === character.id ? 'bg-gray-200' : 'bg-gray-100'
+                      }`}>
+                        <span className="text-xs text-gray-500 mb-0 pb-0 block">Lv.{character.level}</span>
+                        <div className="font-medium text-gray-900 truncate mb-0.5 flex items-center">
                           {character.serverIcon ? (
                             <Image
                               src={character.serverIcon}
@@ -1339,7 +1347,7 @@ export default function BossStatusPage() {
                           ) : (
                             <span className="mr-1">⭐</span>
                           )}
-                          <span>{character.name}</span>
+                          <span className="text-sm">{character.name}</span>
                         </div>
                         <div className="text-xs text-gray-500 mb-1">
                           <span className="flex items-center border border-gray-300 rounded-full px-2 py-0.5 w-fit">
@@ -1793,7 +1801,7 @@ export default function BossStatusPage() {
                         </div>
                       )}
                       {/* 캐릭터 정보 */}
-                      <div className="flex items-center">
+                      <div className="flex items-center bg-white border border-gray-300 rounded-lg p-3">
                         <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
                           <img
                             src={character.image}
@@ -1808,7 +1816,7 @@ export default function BossStatusPage() {
                             }}
                           />
                         </div>
-                        <div className="flex-1 min-w-0">
+                        <div className="flex-1 min-w-0 ml-3">
                           <span className="text-xs text-gray-500 mb-0 pb-0 block">Lv.{character.level}</span>
                           <div className="font-medium text-gray-900 truncate mb-0.5 flex items-center">
                             {character.serverIcon ? (
@@ -2055,7 +2063,7 @@ export default function BossStatusPage() {
         isOpen={isOptimizationResultModalOpen}
         onClose={() => setIsOptimizationResultModalOpen(false)}
         result={optimizationResult}
-        allBosses={apiBosses}
+        allBosses={allBosses}
         bossCharacters={bossCharacters}
         onApplyOptimization={handleApplyOptimization}
       />

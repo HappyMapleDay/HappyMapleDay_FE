@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import Image from 'next/image';
 import { Character, CharacterBulkCreateRequest } from '../types';
 import nexonApiService from '../services/nexonApiService';
 import { TokenManager } from '../services/authService';
@@ -370,13 +369,18 @@ export default function AddBossCharacterModal({
                   } : {}}
                 >
                   {/* 캐릭터 아바타 */}
-                  <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-100 flex-shrink-0">
-                    <Image
+                  <div className="w-[85px] h-[90px] rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                    <img
                       src={character.image}
                       alt={character.name}
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full"
+                      style={{
+                        objectFit: 'none',
+                        objectPosition: '55% 58%',
+                        transform: 'scale(0.8)',
+                        transformOrigin: '55% 58%',
+                        imageRendering: 'crisp-edges'
+                      }}
                     />
                   </div>
 
