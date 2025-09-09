@@ -1830,7 +1830,7 @@ export default function BossStatusPage() {
                             ) : (
                               <span className="mr-1">⭐</span>
                             )}
-                            <span>{character.name}</span>
+                            <span className="text-sm">{character.name}</span>
                           </div>
                           <div className="text-xs text-gray-500 mb-1">
                             <span className="flex items-center border border-gray-300 rounded-full px-2 py-0.5 w-fit">
