@@ -1279,8 +1279,9 @@ export default function BossStatusPage() {
                             setHoveredCharacter(character);
                             ensureCharacterStats(character);
                             const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                            const TOOLTIP_WIDTH = 560;
-                            const TOOLTIP_HEIGHT = 300;
+                            const isMobile = window.innerWidth < 768;
+                            const TOOLTIP_WIDTH = isMobile ? window.innerWidth * 0.9 : 560;
+                            const TOOLTIP_HEIGHT = isMobile ? 400 : 300;
                             const HALF = TOOLTIP_WIDTH / 2;
                             const MARGIN = 12;
                             let x = rect.left + rect.width / 2;
@@ -1340,7 +1341,7 @@ export default function BossStatusPage() {
                 )}
                 {hoveredCharacterId && hoveredCharacter && tooltipPos && (
                   <div className="fixed z-50" style={{ left: tooltipPos.x, top: tooltipPos.y }}>
-                    <div className="-translate-x-1/2 w-[560px] rounded-2xl border border-gray-200 bg-white shadow-2xl p-5">
+                    <div className="-translate-x-1/2 w-[90vw] max-w-[560px] rounded-2xl border border-gray-200 bg-white shadow-2xl p-3 md:p-5">
                       <div className="flex items-center justify-between mb-2">
                         <div className="text-sm font-bold" style={{ color: '#FF9100' }}>캐릭터 상세정보</div>
                         <button
@@ -1357,9 +1358,9 @@ export default function BossStatusPage() {
                         </button>
                       </div>
                       <div className="flex gap-3">
-                        <Image src={hoveredCharacter.image} alt={hoveredCharacter.name} width={96} height={96} className="rounded-xl" />
+                        <Image src={hoveredCharacter.image} alt={hoveredCharacter.name} width={96} height={96} className="rounded-xl w-16 h-16 md:w-24 md:h-24" />
                         <div className="min-w-0">
-                          <div className="font-semibold text-gray-900 truncate">{hoveredCharacter.name}</div>
+                          <div className="font-semibold text-gray-900 truncate text-sm md:text-base">{hoveredCharacter.name}</div>
                           <div className="text-xs text-gray-500 truncate">
                             {hoveredCharacter.server}
                             {hoveredCharacter.guildName && (<>{' '}|{' '}{hoveredCharacter.guildName}</>)}
@@ -1389,8 +1390,8 @@ export default function BossStatusPage() {
                           </div>
                         );
                         return (
-                          <div className="mt-4 border border-gray-200 rounded-2xl p-4">
-                            <div className="grid grid-cols-6 gap-x-8 gap-y-4">
+                          <div className="mt-4 border border-gray-200 rounded-2xl p-2 md:p-4">
+                            <div className="grid grid-cols-3 md:grid-cols-6 gap-x-4 md:gap-x-8 gap-y-2 md:gap-y-4">
                               {cell('HP', s.hp)}
                               {cell('MP', s.mp)}
                               {cell('STR', s.str)}
