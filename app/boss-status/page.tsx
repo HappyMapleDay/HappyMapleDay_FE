@@ -1255,52 +1255,55 @@ export default function BossStatusPage() {
 
                     <div 
                       onClick={() => setSelectedCharacterId(character.id)}
-                      className="flex items-center"
-                      onMouseEnter={(e) => {
-                        setHoveredCharacterId(character.id);
-                        setHoveredCharacter(character);
-                        ensureCharacterStats(character);
-                        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                        const TOOLTIP_WIDTH = 560; // w-[560px]
-                        const TOOLTIP_HEIGHT = 300; // 대략 높이
-                        const HALF = TOOLTIP_WIDTH / 2;
-                        const MARGIN = 12;
-                        let x = rect.left + rect.width / 2;
-                        x = Math.max(MARGIN + HALF, Math.min(window.innerWidth - MARGIN - HALF, x));
-                        const spaceAbove = rect.top;
-                        const spaceBelow = window.innerHeight - rect.bottom;
-                        let placement: 'above' | 'below' = 'below';
-                        let top = rect.bottom + 8;
-                        if (spaceAbove > TOOLTIP_HEIGHT + MARGIN || spaceBelow < TOOLTIP_HEIGHT + MARGIN) {
-                          placement = 'above';
-                          top = Math.max(MARGIN, rect.top - 8 - TOOLTIP_HEIGHT);
-                        } else {
-                          placement = 'below';
-                          top = Math.min(window.innerHeight - MARGIN - TOOLTIP_HEIGHT, rect.bottom + 8);
-                        }
-                        setTooltipPos({ x, y: top, placement });
-                      }}
-                      onMouseLeave={() => {
-                        setHoveredCharacterId((prev) => prev === character.id ? null : prev);
-                        setHoveredCharacter((prev) => prev && prev.id === character.id ? null : prev);
-                        setTooltipPos((prev) => (prev ? null : prev));
-                      }}
+                      className="flex items-start"
                     >
-                      <div className="w-[85px] h-[90px] rounded-lg overflow-hidden flex-shrink-0">
-                        <img
-                          src={character.image}
-                          alt={character.name}
-                          className="w-full h-full"
-                          style={{
-                            objectFit: 'none',
-                            objectPosition: '55% 58%',
-                            transform: 'scale(0.8)',
-                            transformOrigin: '55% 58%',
-                            imageRendering: 'crisp-edges'
+                      <div className="relative w-[85px] h-[90px] flex-shrink-0">
+                        <div className="w-full h-full rounded-lg overflow-hidden">
+                          <img
+                            src={character.image}
+                            alt={character.name}
+                            className="w-full h-full"
+                            style={{
+                              objectFit: 'none',
+                              objectPosition: '55% 58%',
+                              transform: 'scale(0.8)',
+                              transformOrigin: '55% 58%',
+                              imageRendering: 'crisp-edges'
+                            }}
+                          />
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHoveredCharacterId(character.id);
+                            setHoveredCharacter(character);
+                            ensureCharacterStats(character);
+                            const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                            const TOOLTIP_WIDTH = 560;
+                            const TOOLTIP_HEIGHT = 300;
+                            const HALF = TOOLTIP_WIDTH / 2;
+                            const MARGIN = 12;
+                            let x = rect.left + rect.width / 2;
+                            x = Math.max(MARGIN + HALF, Math.min(window.innerWidth - MARGIN - HALF, x));
+                            const spaceAbove = rect.top;
+                            const spaceBelow = window.innerHeight - rect.bottom;
+                            let placement: 'above' | 'below' = 'below';
+                            let top = rect.bottom + 8;
+                            if (spaceAbove > TOOLTIP_HEIGHT + MARGIN || spaceBelow < TOOLTIP_HEIGHT + MARGIN) {
+                              placement = 'above';
+                              top = Math.max(MARGIN, rect.top - 8 - TOOLTIP_HEIGHT);
+                            } else {
+                              placement = 'below';
+                              top = Math.min(window.innerHeight - MARGIN - TOOLTIP_HEIGHT, rect.bottom + 8);
+                            }
+                            setTooltipPos({ x, y: top, placement });
                           }}
-                        />
+                          className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 translate-y-[14px] px-2 py-1 text-xs bg-orange-100 text-orange-700 rounded-md hover:bg-orange-200 transition-colors shadow-sm whitespace-nowrap"
+                        >
+                          세부스탯
+                        </button>
                       </div>
-                      <div className={`flex-1 min-w-0 rounded-lg p-3 ml-1 ${
+                      <div className={`flex-1 min-w-0 rounded-lg p-3 ml-3 ${
                         selectedCharacterId === character.id ? 'bg-gray-200' : 'bg-gray-100'
                       }`}>
                         <span className="text-xs text-gray-500 mb-0 pb-0 block">Lv.{character.level}</span>
@@ -1336,9 +1339,23 @@ export default function BossStatusPage() {
                   ))
                 )}
                 {hoveredCharacterId && hoveredCharacter && tooltipPos && (
-                  <div className="pointer-events-none fixed z-50" style={{ left: tooltipPos.x, top: tooltipPos.y }}>
+                  <div className="fixed z-50" style={{ left: tooltipPos.x, top: tooltipPos.y }}>
                     <div className="-translate-x-1/2 w-[560px] rounded-2xl border border-gray-200 bg-white shadow-2xl p-5">
-                      <div className="text-sm font-bold mb-2" style={{ color: '#FF9100' }}>캐릭터 상세정보</div>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="text-sm font-bold" style={{ color: '#FF9100' }}>캐릭터 상세정보</div>
+                        <button
+                          onClick={() => {
+                            setHoveredCharacterId(null);
+                            setHoveredCharacter(null);
+                            setTooltipPos(null);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
                       <div className="flex gap-3">
                         <Image src={hoveredCharacter.image} alt={hoveredCharacter.name} width={96} height={96} className="rounded-xl" />
                         <div className="min-w-0">
