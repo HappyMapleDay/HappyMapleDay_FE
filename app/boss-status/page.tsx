@@ -1018,7 +1018,7 @@ export default function BossStatusPage() {
                   보돌 히스토리
                 </Link>
                 <Link 
-                  href="/item-history" 
+                  href="/desire-history" 
                   className="text-gray-500 transition-colors"
                   onMouseEnter={(e) => e.currentTarget.style.color = '#FF9100'}
                   onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
@@ -1086,7 +1086,7 @@ export default function BossStatusPage() {
                     보돌 히스토리
                   </Link>
                   <Link 
-                    href="/item-history" 
+                    href="/desire-history" 
                     className="block px-3 py-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
                     onClick={() => setIsMobileMenuOpen(false)}
                   >

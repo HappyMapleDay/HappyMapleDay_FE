@@ -160,7 +160,7 @@ export default function SettingsPage() {
               보돌 히스토리
             </Link>
             <Link 
-              href="/item-history" 
+              href="/desire-history" 
               className="text-gray-500 transition-colors"
               style={{ '--hover-color': '#FF9100' } as React.CSSProperties}
               onMouseEnter={(e) => {
