@@ -16,7 +16,9 @@ import { getCharacterList } from "../../services/characterService";
 import nexonApiService from "../../services/nexonApiService";
 import { TokenManager } from "../../services/authService";
 import { getBossListFromAPI, getBossDesireItems, getOptimizedRecommendation } from "../../services/bossService";
+import { getSettlementStatus, formatDateForAPI, attemptSettlement, autoSaveSettlement } from "../../services/settlementService";
 import type { BossResponse, Boss, OptimizeRecommendationRequest, OptimizedRecommendationResponse } from "../../types/boss";
+import type { SettlementStatusResponse, SettlementRequest, BossRecordRequest, DesireItemRequest } from "../../types/settlement";
 // 프리셋 로직은 모달 내부에서 처리
 
 export default function BossStatusPage() {
@@ -391,9 +393,22 @@ export default function BossStatusPage() {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>("1");
   const [cooldownEndTime, setCooldownEndTime] = useState<number | null>(null);
   const [remainingTime, setRemainingTime] = useState(0);
-  const [dateRange] = useState({
-    startDate: "2025.06.05",
-    endDate: "2025.06.11"
+  // 날짜 범위 상태 (목요일 기준 일주일)
+  const [dateRange, setDateRange] = useState(() => {
+    const today = new Date();
+    const currentDay = today.getDay(); // 0: 일요일, 1: 월요일, ..., 4: 목요일
+    const daysToThursday = (4 - currentDay + 7) % 7; // 목요일까지 남은 일수
+    const thursday = new Date(today);
+    thursday.setDate(today.getDate() + daysToThursday);
+    
+    const startDate = new Date(thursday);
+    const endDate = new Date(thursday);
+    endDate.setDate(thursday.getDate() + 6); // 일주일 후
+    
+    return {
+      startDate: startDate.toISOString().split('T')[0].replace(/-/g, '.'),
+      endDate: endDate.toISOString().split('T')[0].replace(/-/g, '.')
+    };
   });
   // 서버 필터링 상태
   const [selectedServer, setSelectedServer] = useState<string>('전체');
@@ -431,6 +446,71 @@ export default function BossStatusPage() {
 
     return () => clearInterval(interval);
   }, [cooldownEndTime]);
+
+  // 날짜 변경 함수들
+  const handleDateChange = (direction: 'prev' | 'next') => {
+    const currentStartDate = new Date(dateRange.startDate.replace(/\./g, '-'));
+    const newStartDate = new Date(currentStartDate);
+    
+    if (direction === 'prev') {
+      newStartDate.setDate(currentStartDate.getDate() - 7); // 이전 주
+    } else {
+      newStartDate.setDate(currentStartDate.getDate() + 7); // 다음 주
+    }
+    
+    const newEndDate = new Date(newStartDate);
+    newEndDate.setDate(newStartDate.getDate() + 6);
+    
+    setDateRange({
+      startDate: newStartDate.toISOString().split('T')[0].replace(/-/g, '.'),
+      endDate: newEndDate.toISOString().split('T')[0].replace(/-/g, '.')
+    });
+  };
+
+  // 미래 날짜로 이동할 수 있는지 확인
+  const canMoveToNextWeek = () => {
+    const currentStartDate = new Date(dateRange.startDate.replace(/\./g, '-'));
+    const today = new Date();
+    const nextWeekStart = new Date(currentStartDate);
+    nextWeekStart.setDate(currentStartDate.getDate() + 7);
+    
+    return nextWeekStart <= today;
+  };
+
+  // 정산 데이터 로드 함수
+  const loadSettlementData = useCallback(async () => {
+    if (!isLoggedIn || !mainCharacterName) return;
+    
+    try {
+      setIsLoadingSettlement(true);
+      const weekStartDate = formatDateForAPI(dateRange.startDate);
+      
+      // 사용자 ID는 임시로 1로 설정 (실제로는 인증된 사용자 ID를 사용해야 함)
+      const userId = 1;
+      
+      console.log('정산 데이터 로드 중:', { userId, weekStartDate });
+      
+      // 정산 요약 데이터 로드
+      const statusData = await getSettlementStatus(userId, weekStartDate);
+      setSettlementStatus(statusData);
+      
+      console.log('정산 데이터 로드 완료:', { statusData });
+    } catch (error) {
+      console.error('정산 데이터 로드 실패:', error);
+      // 에러 발생 시 상태 초기화
+      setSettlementStatus(null);
+    } finally {
+      setIsLoadingSettlement(false);
+    }
+  }, [isLoggedIn, mainCharacterName, dateRange.startDate]);
+
+
+
+  // 날짜 변경 시 API 호출을 위한 useEffect
+  useEffect(() => {
+    loadSettlementData();
+  }, [loadSettlementData]);
+
 
   // 서버 변경 핸들러 - 선택된 캐릭터가 필터에서 제외되면 자동으로 다른 캐릭터 선택
   const handleServerChange = (server: string) => {
@@ -525,6 +605,12 @@ export default function BossStatusPage() {
   const [isOptimizationResultModalOpen, setIsOptimizationResultModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // 정산 데이터 관련 상태
+  const [settlementStatus, setSettlementStatus] = useState<SettlementStatusResponse | null>(null);
+  const [isLoadingSettlement, setIsLoadingSettlement] = useState(false);
+  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+
   // 서버 목록 동적 생성 (캐릭터들의 서버만 포함)
   const availableServers = ['전체', ...Array.from(new Set(bossCharacters.map(char => char.server)))];
   
@@ -535,6 +621,168 @@ export default function BossStatusPage() {
 
   const selectedCharacter = bossCharacters.find((char: Character) => char.id === selectedCharacterId);
   const selectedBossSelections = selectedCharacterId ? characterBossSelections[selectedCharacterId] || [] : [];
+
+  // SettlementRequest 생성 함수
+  const createSettlementRequest = useCallback((): SettlementRequest => {
+    const bossRecords: BossRecordRequest[] = [];
+    
+    filteredCharacters.forEach(character => {
+      const selections = characterBossSelections[character.id] || [];
+      const clearedSelections = selections.filter(selection => selection.isCleared);
+      
+      clearedSelections.forEach(selection => {
+        const boss = allBosses.find(b => b.id === selection.bossId);
+        const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
+        
+        if (boss && difficultyInfo) {
+          // 결정석 수익 계산
+          const crystalIncome = difficultyInfo.expectedMeso / selection.partySize;
+          
+          // 물욕템 수익 계산
+          const desireItems: DesireItemRequest[] = selection.desireDropItems.map((item, index) => ({
+            desireItemId: index + 1, // 임시 ID 생성
+            sourceBoxItemId: undefined, // 필요시 추가 로직 구현
+            salePrice: item.price
+          }));
+          
+          bossRecords.push({
+            characterId: parseInt(character.id),
+            bossId: parseInt(boss.id) || 0,
+            partySize: selection.partySize,
+            crystalIncome: Math.floor(crystalIncome),
+            desireItems,
+            characterLevel: character.level,
+            arcaneForce: character.arcaneForce || 0,
+            authenticForce: character.authenticForce || 0,
+            character_class: character.job,
+            combat_power: 0 // 필요시 추가 로직 구현
+          });
+        }
+      });
+    });
+    
+    return {
+      worldName: selectedServer === '전체' ? 'ALL' : selectedServer,
+      bossRecords,
+      version: 1
+    };
+  }, [filteredCharacters, characterBossSelections, allBosses, selectedServer]);
+
+  // 자동 저장 함수
+  const triggerAutoSave = useCallback(async () => {
+    if (!isLoggedIn || !mainCharacterName) return;
+    
+    try {
+      setIsAutoSaving(true);
+      const weekStartDate = formatDateForAPI(dateRange.startDate);
+      const userId = 1; // 임시 사용자 ID
+      const settlementRequest = createSettlementRequest();
+      
+      console.log('자동 저장 실행:', { userId, weekStartDate, settlementRequest });
+      
+      await autoSaveSettlement(userId, weekStartDate, settlementRequest);
+      console.log('자동 저장 완료');
+    } catch (error) {
+      console.error('자동 저장 실패:', error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [isLoggedIn, mainCharacterName, dateRange.startDate, createSettlementRequest]);
+
+  // 자동 저장 타이머 설정
+  const scheduleAutoSave = useCallback(() => {
+    // 기존 타이머 클리어
+    if (autoSaveTimeout) {
+      clearTimeout(autoSaveTimeout);
+    }
+    
+    // 5초 후 자동 저장 실행
+    const timeout = setTimeout(() => {
+      triggerAutoSave();
+    }, 5000);
+    
+    setAutoSaveTimeout(timeout);
+  }, [autoSaveTimeout, triggerAutoSave]);
+
+  // 보스 선택 변경 시 자동 저장 스케줄링
+  useEffect(() => {
+    if (Object.keys(characterBossSelections).length > 0) {
+      scheduleAutoSave();
+    }
+    
+    return () => {
+      if (autoSaveTimeout) {
+        clearTimeout(autoSaveTimeout);
+      }
+    };
+  }, [characterBossSelections, scheduleAutoSave, autoSaveTimeout]);
+
+  // 수동 정산 시도 함수
+  const handleSettlementAttempt = useCallback(async () => {
+    if (!isLoggedIn || !mainCharacterName) return;
+    
+    try {
+      const weekStartDate = formatDateForAPI(dateRange.startDate);
+      const userId = 1; // 임시 사용자 ID
+      
+      // SettlementRequest를 직접 생성
+      const bossRecords: BossRecordRequest[] = [];
+      
+      filteredCharacters.forEach(character => {
+        const selections = characterBossSelections[character.id] || [];
+        const clearedSelections = selections.filter(selection => selection.isCleared);
+        
+        clearedSelections.forEach(selection => {
+          const boss = allBosses.find(b => b.id === selection.bossId);
+          const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
+          
+          if (boss && difficultyInfo) {
+            // 결정석 수익 계산
+            const crystalIncome = difficultyInfo.expectedMeso / selection.partySize;
+            
+            // 물욕템 수익 계산
+            const desireItems: DesireItemRequest[] = selection.desireDropItems.map((item, index) => ({
+              desireItemId: index + 1, // 임시 ID 생성
+              sourceBoxItemId: undefined, // 필요시 추가 로직 구현
+              salePrice: item.price
+            }));
+            
+            bossRecords.push({
+              characterId: parseInt(character.id),
+              bossId: parseInt(boss.id) || 0,
+              partySize: selection.partySize,
+              crystalIncome: Math.floor(crystalIncome),
+              desireItems,
+              characterLevel: character.level,
+              arcaneForce: character.arcaneForce || 0,
+              authenticForce: character.authenticForce || 0,
+              character_class: character.job,
+              combat_power: 0 // 필요시 추가 로직 구현
+            });
+          }
+        });
+      });
+      
+      const settlementRequest: SettlementRequest = {
+        worldName: selectedServer === '전체' ? 'ALL' : selectedServer,
+        bossRecords,
+        version: 1
+      };
+      
+      console.log('정산 시도:', { userId, weekStartDate, settlementRequest });
+      
+      const result = await attemptSettlement(userId, weekStartDate, settlementRequest);
+      console.log('정산 시도 완료:', result);
+      
+      // 정산 완료 후 데이터 새로고침
+      await loadSettlementData();
+      
+      alert('정산이 완료되었습니다!');
+    } catch (error) {
+      console.error('정산 시도 실패:', error);
+      alert('정산 시도에 실패했습니다.');
+    }
+  }, [isLoggedIn, mainCharacterName, dateRange.startDate, filteredCharacters, characterBossSelections, allBosses, selectedServer, loadSettlementData]);
 
   const handleBossesChange = (bossIds: string[], difficultySettings?: Record<string, number>) => {
     console.log('handleBossesChange called with:', { bossIds, difficultySettings, allBossesLength: allBosses.length });
@@ -927,7 +1175,7 @@ export default function BossStatusPage() {
   };
 
   // 최적화 추천에서 제외된 보스인지 확인하는 함수
-  const isExcludedFromOptimization = (characterId: string, bossId: string): boolean => {
+  const isExcludedFromOptimization = (): boolean => {
     // 최적화 배경색 변경 기능 비활성화 - 모달에서 최적화 상태 확인 가능
     return false;
   };
@@ -953,33 +1201,37 @@ export default function BossStatusPage() {
 
 
 
-  // 필터링된 캐릭터들의 총합 계산 - 클리어된 보스만 포함
-  const filteredTotalBossCount = filteredCharacters.reduce((sum, character) => {
-    const selections = characterBossSelections[character.id] || [];
-    const clearedBosses = selections.filter(selection => selection.isCleared);
-    return sum + clearedBosses.length;
-  }, 0);
-  
-  const filteredTotalExpectedMeso = filteredCharacters.reduce((sum, character) => {
-    const selections = characterBossSelections[character.id] || [];
-    const characterTotal = selections.reduce((charSum, selection) => {
-      // 클리어되지 않은 보스는 총계에서 제외
-      if (!selection.isCleared) return charSum;
-      
-      const boss = allBosses.find(b => b.id === selection.bossId);
-      const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
-      const mesoPerPlayer = difficultyInfo?.expectedMeso || 0;
-      const actualMeso = mesoPerPlayer / selection.partySize;
-      
-      // 물욕템 체크된 경우 모든 물욕템의 총 가격 사용 (메소 단위)
-      const desireDropMeso = selection.desireDropItems.reduce((sum, item) => {
-        return sum + (item.price / selection.partySize);
+  // 필터링된 캐릭터들의 총합 계산 - 정산 데이터가 있으면 정산 데이터 사용, 없으면 클리어된 보스만 포함
+  const filteredTotalBossCount = settlementStatus 
+    ? settlementStatus.totalBossCount 
+    : filteredCharacters.reduce((sum, character) => {
+        const selections = characterBossSelections[character.id] || [];
+        const clearedBosses = selections.filter(selection => selection.isCleared);
+        return sum + clearedBosses.length;
       }, 0);
-      
-      return charSum + actualMeso + desireDropMeso;
-    }, 0);
-    return sum + characterTotal;
-  }, 0);
+  
+  const filteredTotalExpectedMeso = settlementStatus 
+    ? settlementStatus.totalIncome 
+    : filteredCharacters.reduce((sum, character) => {
+        const selections = characterBossSelections[character.id] || [];
+        const characterTotal = selections.reduce((charSum, selection) => {
+          // 클리어되지 않은 보스는 총계에서 제외
+          if (!selection.isCleared) return charSum;
+          
+          const boss = allBosses.find(b => b.id === selection.bossId);
+          const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
+          const mesoPerPlayer = difficultyInfo?.expectedMeso || 0;
+          const actualMeso = mesoPerPlayer / selection.partySize;
+          
+          // 물욕템 체크된 경우 모든 물욕템의 총 가격 사용 (메소 단위)
+          const desireDropMeso = selection.desireDropItems.reduce((sum, item) => {
+            return sum + (item.price / selection.partySize);
+          }, 0);
+          
+          return charSum + actualMeso + desireDropMeso;
+        }, 0);
+        return sum + characterTotal;
+      }, 0);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -1145,7 +1397,11 @@ export default function BossStatusPage() {
 
           {/* Date Range Picker */}
           <div className="flex items-center justify-center gap-2 bg-white border border-gray-300 rounded-lg px-4 py-2">
-            <button className="text-gray-400">
+            <button 
+              onClick={() => handleDateChange('prev')}
+              className="text-gray-600 hover:text-gray-800 transition-colors"
+              title="이전 주"
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
               </svg>
@@ -1153,7 +1409,16 @@ export default function BossStatusPage() {
             <span className="text-sm font-medium">
               {dateRange.startDate} ~ {dateRange.endDate}
             </span>
-            <button className="text-gray-400">
+            <button 
+              onClick={() => handleDateChange('next')}
+              disabled={!canMoveToNextWeek()}
+              className={`transition-colors ${
+                canMoveToNextWeek() 
+                  ? 'text-gray-600 hover:text-gray-800' 
+                  : 'text-gray-300 cursor-not-allowed'
+              }`}
+              title={canMoveToNextWeek() ? "다음 주" : "미래 날짜로는 이동할 수 없습니다"}
+            >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
@@ -1538,7 +1803,7 @@ export default function BossStatusPage() {
                               : 'bg-white hover:shadow-sm'
                           }`}
                           style={
-                            isExcludedFromOptimization(selectedCharacterId!, selection.bossId)
+                            isExcludedFromOptimization()
                               ? { backgroundColor: 'rgba(128, 128, 128, 0.3)', borderColor: '#9CA3AF' }
                               : selection.isCleared 
                                 ? { backgroundColor: 'rgba(255, 179, 102, 0.8)', borderColor: '#FF9100' }
@@ -1842,7 +2107,24 @@ export default function BossStatusPage() {
                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FFF3E0'}
                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
               >
-                총 {filteredTotalBossCount}마리 {formatMeso(filteredTotalExpectedMeso)}
+                {isLoadingSettlement ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin"></div>
+                    <span>정산 데이터 로딩 중...</span>
+                  </div>
+                ) : settlementStatus ? (
+                  <div className="flex flex-col items-center">
+                    <span>정산 데이터</span>
+                    <span>총 {filteredTotalBossCount}마리 {formatMeso(filteredTotalExpectedMeso)}</span>
+                  </div>
+                ) : isAutoSaving ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-4 h-4 border-2 border-orange-300 border-t-orange-600 rounded-full animate-spin"></div>
+                    <span>자동 저장 중...</span>
+                  </div>
+                ) : (
+                  `총 ${filteredTotalBossCount}마리 ${formatMeso(filteredTotalExpectedMeso)}`
+                )}
               </button>
               
               <div className="space-y-4 h-[250px] md:h-[350px] lg:h-[calc(100vh-450px)] overflow-y-auto">
@@ -1990,6 +2272,7 @@ export default function BossStatusPage() {
                     <p>기능을 사용할 수 없습니다.</p>
                   </div>
                   <button 
+                    onClick={handleSettlementAttempt}
                     className="w-full px-3 py-2 text-white rounded-lg transition-colors text-xs"
                     style={{ backgroundColor: '#FF9100' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
@@ -2037,6 +2320,7 @@ export default function BossStatusPage() {
               </p>
             </div>
             <button 
+              onClick={handleSettlementAttempt}
               className="px-6 py-3 text-white rounded-lg transition-colors whitespace-nowrap"
               style={{ backgroundColor: '#FF9100' }}
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
