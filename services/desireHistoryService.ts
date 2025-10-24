@@ -2,7 +2,7 @@ import { DesireHistoryRequest, DesireHistoryResponse, Character, DesireItem } fr
 
 // 물욕템 히스토리 API 서비스
 export class DesireHistoryService {
-  private static baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+  private static baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
   // 물욕템 히스토리 데이터 조회
   static async getDesireHistory(params: DesireHistoryRequest): Promise<DesireHistoryResponse> {

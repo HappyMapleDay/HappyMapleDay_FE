@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Character, CharacterStats } from "../../types";
 import { BossSelection } from "../../types/boss";
@@ -16,7 +16,7 @@ import { getCharacterList } from "../../services/characterService";
 import nexonApiService from "../../services/nexonApiService";
 import { TokenManager } from "../../services/authService";
 import { getBossListFromAPI, getBossDesireItems, getOptimizedRecommendation } from "../../services/bossService";
-import { getSettlementStatus, formatDateForAPI, attemptSettlement, autoSaveSettlement } from "../../services/settlementService";
+import { getSettlementStatus, formatDateForAPI, attemptSettlement, autoSaveSettlement, deleteSettlement } from "../../services/settlementService";
 import type { BossResponse, Boss, OptimizeRecommendationRequest, OptimizedRecommendationResponse } from "../../types/boss";
 import type { SettlementStatusResponse, SettlementRequest, BossRecordRequest, DesireItemRequest } from "../../types/settlement";
 // 프리셋 로직은 모달 내부에서 처리
@@ -320,71 +320,14 @@ export default function BossStatusPage() {
     // 매핑된 파일명이 있으면 사용
     const mappedFileName = imageOverrides[itemKey];
     if (mappedFileName) {
-      // 캐시 버스팅을 위한 타임스탬프 추가
-      const timestamp = Date.now();
-      const imagePath = `/image/drop-item/${mappedFileName}.png?v=${timestamp}`;
-      console.log('최종 이미지 경로 (캐시버스팅):', imagePath);
+      const imagePath = `/image/drop-item/${mappedFileName}.png`;
       return imagePath;
     }
     
     // 기본적으로 영문명 우선 사용
     const fileName = itemNameEn || itemName;
-    const timestamp = Date.now();
-    const imagePath = `/image/drop-item/${fileName}.png?v=${timestamp}`;
-    console.log('기본 이미지 경로 (캐시버스팅):', imagePath);
+    const imagePath = `/image/drop-item/${fileName}.png`;
     return imagePath;
-  };
-
-  // 디버깅용 플래그 (한 번만 로그 출력)
-  const [hasLoggedBossStructure, setHasLoggedBossStructure] = useState(false);
-
-
-
-  // UI 보스 ID(영문명)와 난이도를 API 보스 ID(숫자)로 매핑
-  const getBossApiId = (uiBossId: string, difficulty: string): number => {
-    // 첫 번째 호출에서만 구조 로그 출력
-    if (!hasLoggedBossStructure && apiBosses.length > 0) {
-      console.log('=== apiBosses 데이터 구조 분석 ===');
-      console.log('apiBosses 길이:', apiBosses.length);
-      console.log('첫 번째 객체 전체 구조:', JSON.stringify(apiBosses[0], null, 2));
-      console.log('첫 번째 객체의 모든 키:', Object.keys(apiBosses[0]));
-      setHasLoggedBossStructure(true);
-    }
-    
-    // 난이도 매핑 (UI -> API)
-    const difficultyMap: Record<string, string> = {
-      'easy': '이지',
-      'normal': '노말', 
-      'hard': '하드',
-      'chaos': '카오스',
-      'extreme': '익스트림'
-    };
-    
-    const apiDifficulty = difficultyMap[difficulty] || difficulty;
-    
-    // 원본 API 데이터에서 영문명과 난이도로 찾기
-    const apiBoss = apiBosses.find(boss => {
-      const englishName = boss.bossNameEn || boss.englishName;
-      const bossMatches = englishName === uiBossId;
-      const difficultyMatches = boss.difficulty === apiDifficulty || boss.difficultyEn === difficulty;
-      
-      return bossMatches && difficultyMatches;
-    });
-    
-    if (apiBoss) {
-      // 첫 번째 매칭에서만 상세 로그 출력
-      if (!hasLoggedBossStructure) {
-        console.log('매칭된 보스 객체 구조:', JSON.stringify(apiBoss, null, 2));
-        console.log('ID 필드 확인: bossId =', apiBoss.bossId);
-      }
-      
-      console.log(`매칭: ${uiBossId} (${difficulty}) -> ${apiBoss.bossId}`);
-      return apiBoss.bossId;
-    }
-    
-    // 찾지 못한 경우 0 반환 (나중에 필터링됨)
-    console.warn(`API 보스 ID를 찾을 수 없음: ${uiBossId} (${difficulty})`);
-    return 0;
   };
 
   // 현재 보돌캐로 선택된 캐릭터들
@@ -485,8 +428,14 @@ export default function BossStatusPage() {
       setIsLoadingSettlement(true);
       const weekStartDate = formatDateForAPI(dateRange.startDate);
       
-      // 사용자 ID는 임시로 1로 설정 (실제로는 인증된 사용자 ID를 사용해야 함)
-      const userId = 1;
+      // localStorage에서 userId 가져오기
+      const userIdStr = TokenManager.getUserId();
+      const userId = userIdStr ? parseInt(userIdStr) : null;
+      
+      if (!userId) {
+        console.warn('사용자 ID를 찾을 수 없습니다.');
+        return;
+      }
       
       console.log('정산 데이터 로드 중:', { userId, weekStartDate });
       
@@ -593,6 +542,37 @@ export default function BossStatusPage() {
   const [isLoadingBosses, setIsLoadingBosses] = useState(true);
   const [apiBosses, setApiBosses] = useState<BossResponse[]>([]); // 원본 API 보스 데이터
   
+  // UI 보스 ID(영문명)와 난이도를 API 보스 ID(숫자)로 매핑
+  const getBossApiId = useCallback((uiBossId: string, difficulty: string): number => {
+    // 난이도 매핑 (UI -> API)
+    const difficultyMap: Record<string, string> = {
+      'easy': '이지',
+      'normal': '노말', 
+      'hard': '하드',
+      'chaos': '카오스',
+      'extreme': '익스트림'
+    };
+    
+    const apiDifficulty = difficultyMap[difficulty] || difficulty;
+    
+    // 원본 API 데이터에서 영문명과 난이도로 찾기
+    const apiBoss = apiBosses.find(boss => {
+      const englishName = boss.bossNameEn || boss.englishName;
+      const bossMatches = englishName === uiBossId;
+      const difficultyMatches = boss.difficulty === apiDifficulty || boss.difficultyEn === difficulty;
+      
+      return bossMatches && difficultyMatches;
+    });
+    
+    if (apiBoss) {
+      return apiBoss.bossId;
+    }
+    
+    // 찾지 못한 경우 0 반환 (나중에 필터링됨)
+    console.warn(`API 보스 ID를 찾을 수 없음: ${uiBossId} (${difficulty})`);
+    return 0;
+  }, [apiBosses]);
+  
   // 물욕템 관련 상태
   const [isDesireDropModalOpen, setIsDesireDropModalOpen] = useState(false);
   const [currentDesireDropBoss, setCurrentDesireDropBoss] = useState<{ bossId: string; bossName: string; difficulty: string } | null>(null);
@@ -608,7 +588,7 @@ export default function BossStatusPage() {
   // 정산 데이터 관련 상태
   const [settlementStatus, setSettlementStatus] = useState<SettlementStatusResponse | null>(null);
   const [isLoadingSettlement, setIsLoadingSettlement] = useState(false);
-  const [autoSaveTimeout, setAutoSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   // 서버 목록 동적 생성 (캐릭터들의 서버만 포함)
@@ -635,27 +615,48 @@ export default function BossStatusPage() {
         const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
         
         if (boss && difficultyInfo) {
+          // API 보스 ID 가져오기 (UI ID -> API ID 변환)
+          const apiBossId = getBossApiId(selection.bossId, selection.selectedDifficulty);
+          
+          if (apiBossId === 0) {
+            console.warn(`보스 ID를 찾을 수 없음: ${selection.bossId} (${selection.selectedDifficulty})`);
+            return;
+          }
+          
           // 결정석 수익 계산
-          const crystalIncome = difficultyInfo.expectedMeso / selection.partySize;
+          const crystalIncome = Math.floor(difficultyInfo.expectedMeso / selection.partySize);
           
           // 물욕템 수익 계산
-          const desireItems: DesireItemRequest[] = selection.desireDropItems.map((item, index) => ({
-            desireItemId: index + 1, // 임시 ID 생성
-            sourceBoxItemId: undefined, // 필요시 추가 로직 구현
-            salePrice: item.price
-          }));
+          const desireItems: DesireItemRequest[] = selection.desireDropItems
+            .map((item) => {
+              const dropItem = item.item as { id?: string | number; name?: string };
+              const itemId = typeof dropItem.id === 'string' ? parseInt(dropItem.id) : (dropItem.id || 0);
+              
+              console.log('물욕템 ID 변환:', { 
+                originalId: dropItem.id, 
+                parsedId: itemId,
+                itemName: dropItem.name 
+              });
+              
+              return {
+                desireItemId: itemId,
+                sourceBoxItemId: undefined,
+                salePrice: item.price
+              };
+            })
+            .filter(item => item.desireItemId > 0); // desireItemId가 0인 아이템 제외
           
           bossRecords.push({
             characterId: parseInt(character.id),
-            bossId: parseInt(boss.id) || 0,
+            bossId: apiBossId,
             partySize: selection.partySize,
-            crystalIncome: Math.floor(crystalIncome),
+            crystalIncome: crystalIncome,
             desireItems,
             characterLevel: character.level,
             arcaneForce: character.arcaneForce || 0,
             authenticForce: character.authenticForce || 0,
             character_class: character.job,
-            combat_power: 0 // 필요시 추가 로직 구현
+            combat_power: 0
           });
         }
       });
@@ -666,7 +667,7 @@ export default function BossStatusPage() {
       bossRecords,
       version: 1
     };
-  }, [filteredCharacters, characterBossSelections, allBosses, selectedServer]);
+  }, [filteredCharacters, characterBossSelections, allBosses, selectedServer, getBossApiId]);
 
   // 자동 저장 함수
   const triggerAutoSave = useCallback(async () => {
@@ -675,7 +676,16 @@ export default function BossStatusPage() {
     try {
       setIsAutoSaving(true);
       const weekStartDate = formatDateForAPI(dateRange.startDate);
-      const userId = 1; // 임시 사용자 ID
+      
+      // localStorage에서 userId 가져오기
+      const userIdStr = TokenManager.getUserId();
+      const userId = userIdStr ? parseInt(userIdStr) : null;
+      
+      if (!userId) {
+        console.warn('사용자 ID를 찾을 수 없습니다.');
+        return;
+      }
+      
       const settlementRequest = createSettlementRequest();
       
       console.log('자동 저장 실행:', { userId, weekStartDate, settlementRequest });
@@ -692,17 +702,15 @@ export default function BossStatusPage() {
   // 자동 저장 타이머 설정
   const scheduleAutoSave = useCallback(() => {
     // 기존 타이머 클리어
-    if (autoSaveTimeout) {
-      clearTimeout(autoSaveTimeout);
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
     }
     
     // 5초 후 자동 저장 실행
-    const timeout = setTimeout(() => {
+    autoSaveTimeoutRef.current = setTimeout(() => {
       triggerAutoSave();
     }, 5000);
-    
-    setAutoSaveTimeout(timeout);
-  }, [autoSaveTimeout, triggerAutoSave]);
+  }, [triggerAutoSave]);
 
   // 보스 선택 변경 시 자동 저장 스케줄링
   useEffect(() => {
@@ -711,11 +719,11 @@ export default function BossStatusPage() {
     }
     
     return () => {
-      if (autoSaveTimeout) {
-        clearTimeout(autoSaveTimeout);
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
       }
     };
-  }, [characterBossSelections, scheduleAutoSave, autoSaveTimeout]);
+  }, [characterBossSelections, scheduleAutoSave]);
 
   // 수동 정산 시도 함수
   const handleSettlementAttempt = useCallback(async () => {
@@ -723,7 +731,15 @@ export default function BossStatusPage() {
     
     try {
       const weekStartDate = formatDateForAPI(dateRange.startDate);
-      const userId = 1; // 임시 사용자 ID
+      
+      // localStorage에서 userId 가져오기
+      const userIdStr = TokenManager.getUserId();
+      const userId = userIdStr ? parseInt(userIdStr) : null;
+      
+      if (!userId) {
+        alert('사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
+      }
       
       // SettlementRequest를 직접 생성
       const bossRecords: BossRecordRequest[] = [];
@@ -737,27 +753,42 @@ export default function BossStatusPage() {
           const difficultyInfo = boss?.difficulties.find(d => d.difficulty === selection.selectedDifficulty);
           
           if (boss && difficultyInfo) {
+            // API 보스 ID 가져오기 (UI ID -> API ID 변환)
+            const apiBossId = getBossApiId(selection.bossId, selection.selectedDifficulty);
+            
+            if (apiBossId === 0) {
+              console.warn(`보스 ID를 찾을 수 없음: ${selection.bossId} (${selection.selectedDifficulty})`);
+              return; // 해당 보스는 정산에서 제외
+            }
+            
             // 결정석 수익 계산
-            const crystalIncome = difficultyInfo.expectedMeso / selection.partySize;
+            const crystalIncome = Math.floor(difficultyInfo.expectedMeso / selection.partySize);
             
             // 물욕템 수익 계산
-            const desireItems: DesireItemRequest[] = selection.desireDropItems.map((item, index) => ({
-              desireItemId: index + 1, // 임시 ID 생성
-              sourceBoxItemId: undefined, // 필요시 추가 로직 구현
-              salePrice: item.price
-            }));
+            const desireItems: DesireItemRequest[] = selection.desireDropItems
+              .map((item) => {
+                const dropItem = item.item as { id?: string | number; name?: string };
+                const itemId = typeof dropItem.id === 'string' ? parseInt(dropItem.id) : (dropItem.id || 0);
+                
+                return {
+                  desireItemId: itemId,
+                  sourceBoxItemId: undefined,
+                  salePrice: item.price
+                };
+              })
+              .filter(item => item.desireItemId > 0); // desireItemId가 0인 아이템 제외
             
             bossRecords.push({
               characterId: parseInt(character.id),
-              bossId: parseInt(boss.id) || 0,
+              bossId: apiBossId,
               partySize: selection.partySize,
-              crystalIncome: Math.floor(crystalIncome),
+              crystalIncome: crystalIncome,
               desireItems,
               characterLevel: character.level,
               arcaneForce: character.arcaneForce || 0,
               authenticForce: character.authenticForce || 0,
               character_class: character.job,
-              combat_power: 0 // 필요시 추가 로직 구현
+              combat_power: 0
             });
           }
         });
@@ -771,6 +802,15 @@ export default function BossStatusPage() {
       
       console.log('정산 시도:', { userId, weekStartDate, settlementRequest });
       
+      // 1. 먼저 auto-save로 데이터 생성 또는 업데이트
+      try {
+        await autoSaveSettlement(userId, weekStartDate, settlementRequest);
+        console.log('임시 저장 완료');
+      } catch (autoSaveError) {
+        console.warn('임시 저장 실패 (이미 존재할 수 있음):', autoSaveError);
+      }
+      
+      // 2. PUT으로 정산 완료 처리
       const result = await attemptSettlement(userId, weekStartDate, settlementRequest);
       console.log('정산 시도 완료:', result);
       
@@ -782,7 +822,38 @@ export default function BossStatusPage() {
       console.error('정산 시도 실패:', error);
       alert('정산 시도에 실패했습니다.');
     }
-  }, [isLoggedIn, mainCharacterName, dateRange.startDate, filteredCharacters, characterBossSelections, allBosses, selectedServer, loadSettlementData]);
+  }, [isLoggedIn, mainCharacterName, dateRange.startDate, filteredCharacters, characterBossSelections, allBosses, selectedServer, loadSettlementData, getBossApiId]);
+
+  // 정산 삭제 함수 (개발용)
+  const handleDeleteSettlement = useCallback(async () => {
+    if (!isLoggedIn || !settlementStatus?.settlementId) return;
+    
+    const confirmDelete = window.confirm('정산 데이터를 삭제하시겠습니까?\n이 작업은 개발용이며 되돌릴 수 없습니다.');
+    if (!confirmDelete) return;
+    
+    try {
+      const userIdStr = TokenManager.getUserId();
+      const userId = userIdStr ? parseInt(userIdStr) : null;
+      
+      if (!userId) {
+        alert('사용자 ID를 찾을 수 없습니다. 다시 로그인해주세요.');
+        return;
+      }
+      
+      console.log('정산 삭제 시도:', { userId, settlementId: settlementStatus.settlementId });
+      
+      await deleteSettlement(userId, settlementStatus.settlementId);
+      console.log('정산 삭제 완료');
+      
+      // 정산 데이터 새로고침
+      await loadSettlementData();
+      
+      alert('정산이 삭제되었습니다.');
+    } catch (error) {
+      console.error('정산 삭제 실패:', error);
+      alert('정산 삭제에 실패했습니다.');
+    }
+  }, [isLoggedIn, settlementStatus, loadSettlementData]);
 
   const handleBossesChange = (bossIds: string[], difficultySettings?: Record<string, number>) => {
     console.log('handleBossesChange called with:', { bossIds, difficultySettings, allBossesLength: allBosses.length });
@@ -2280,6 +2351,19 @@ export default function BossStatusPage() {
                   >
                     이번 주 보돌 완료
                   </button>
+                  
+                  {/* 개발용 정산 삭제 버튼 */}
+                  {process.env.NODE_ENV === 'development' && settlementStatus && (
+                    <button 
+                      onClick={handleDeleteSettlement}
+                      className="w-full px-3 py-2 text-white rounded-lg transition-colors text-xs"
+                      style={{ backgroundColor: '#DC3545' }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C82333'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#DC3545'}
+                    >
+                      정산 삭제 (개발용)
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -2319,15 +2403,30 @@ export default function BossStatusPage() {
                 추천 최적 보돌 산출 기능을 사용할 수 없습니다.
               </p>
             </div>
-            <button 
-              onClick={handleSettlementAttempt}
-              className="px-6 py-3 text-white rounded-lg transition-colors whitespace-nowrap"
-              style={{ backgroundColor: '#FF9100' }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
-            >
-              이번 주 보돌 완료
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleSettlementAttempt}
+                className="px-6 py-3 text-white rounded-lg transition-colors whitespace-nowrap"
+                style={{ backgroundColor: '#FF9100' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
+              >
+                이번 주 보돌 완료
+              </button>
+              
+              {/* 개발용 정산 삭제 버튼 */}
+              {process.env.NODE_ENV === 'development' && settlementStatus && (
+                <button 
+                  onClick={handleDeleteSettlement}
+                  className="px-6 py-3 text-white rounded-lg transition-colors whitespace-nowrap"
+                  style={{ backgroundColor: '#DC3545' }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#C82333'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#DC3545'}
+                >
+                  정산 삭제 (개발용)
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -2385,8 +2484,15 @@ export default function BossStatusPage() {
                                typedItem.randomBoxItems && 
                                typedItem.randomBoxItems.length > 0;
               
+              console.log('물욕템 API 데이터:', {
+                id: typedItem.id,
+                itemName: typedItem.itemName,
+                fullItemName: typedItem.fullItemName,
+                isRandomBox: typedItem.isRandomBox
+              });
+              
               return {
-                id: typedItem.id?.toString() || Math.random().toString(),
+                id: typedItem.id?.toString() || `temp-${Math.random()}`,
                 name: typedItem.itemName || typedItem.fullItemName || '알 수 없는 아이템',
                 image: getDesireItemImage(typedItem.itemNameEn, typedItem.itemName),
                 isRingBox: isRingBox,

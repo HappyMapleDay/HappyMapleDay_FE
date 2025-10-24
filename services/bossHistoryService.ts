@@ -2,7 +2,7 @@ import { BossHistoryRequest, BossHistoryResponse } from '../types/bossHistory';
 
 // 보돌 히스토리 API 서비스
 export class BossHistoryService {
-  private static baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001/api';
+  private static baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
   // 보돌 히스토리 데이터 조회
   static async getBossHistory(params: BossHistoryRequest): Promise<BossHistoryResponse> {

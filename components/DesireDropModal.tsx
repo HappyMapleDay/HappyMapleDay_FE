@@ -174,29 +174,16 @@ export default function DesireDropModal({
                         <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                           <div className="flex items-center gap-3">
                             <img
-                              key={availableItem.image}
                               src={availableItem.image}
                               alt={availableItem.name}
                               width={40}
                               height={40}
                               className="rounded"
-                              style={{ display: 'block' }}
-                              onLoad={(e) => {
-                                console.log('이미지 로드 성공:', {
-                                  src: availableItem.image,
-                                  itemName: availableItem.name
-                                });
-                                const target = e.target as HTMLImageElement;
-                                target.style.opacity = '1';
-                              }}
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
-                                console.error('이미지 로드 실패:', {
-                                  originalSrc: availableItem.image,
-                                  itemName: availableItem.name,
-                                  fallbackSrc: '/image/logo.png'
-                                });
-                                target.src = '/image/logo.png';
+                                if (target.src !== '/image/logo.png') {
+                                  target.src = '/image/logo.png';
+                                }
                               }}
                             />
                             <div>
@@ -236,15 +223,7 @@ export default function DesireDropModal({
               {/* 물욕템 추가 버튼 */}
               <button
                 onClick={() => setStep('add')}
-                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 transition-colors"
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = '#FFB366';
-                  e.currentTarget.style.color = '#FF9100';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = '#D1D5DB';
-                  e.currentTarget.style.color = '#6B7280';
-                }}
+                className="w-full p-3 border-2 border-dashed border-gray-300 rounded-lg text-gray-600 transition-colors hover:border-[#FFB366] hover:text-[#FF9100]"
               >
                 + 물욕템 추가
               </button>
@@ -267,15 +246,7 @@ export default function DesireDropModal({
                   <button
                     key={item.id}
                     onClick={() => handleItemSelect(item)}
-                    className="p-3 border border-gray-200 rounded-lg transition-colors text-left"
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = '#FFB366';
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 145, 0, 0.05)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = '#E5E7EB';
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
+                    className="p-3 border border-gray-200 rounded-lg transition-colors text-left hover:border-[#FFB366] hover:bg-[rgba(255,145,0,0.05)]"
                   >
                     <div className="flex items-center gap-3">
                       <img
@@ -286,12 +257,9 @@ export default function DesireDropModal({
                         className="rounded flex-shrink-0"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          console.error('물욕템 선택 이미지 로드 실패:', {
-                            originalSrc: item.image,
-                            itemName: item.name,
-                            fallbackSrc: '/image/logo.png'
-                          });
-                          target.src = '/image/logo.png';
+                          if (target.src !== '/image/logo.png') {
+                            target.src = '/image/logo.png';
+                          }
                         }}
                       />
                       <div className="min-w-0">
@@ -373,34 +341,9 @@ export default function DesireDropModal({
                         className="rounded"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          
-                          // 특수 케이스: 커맨더 포스 이어링은 drop-item에 있음
-                          const isCommander = ring.name.includes('커맨더') || ring.name.toLowerCase().includes('commander');
-                          
-                          const isActualRing = ring.name.includes('링') || 
-                                             ring.name.includes('ring') || 
-                                             ring.name.toLowerCase().includes('restraint') ||
-                                             ring.name.toLowerCase().includes('continue') ||
-                                             ring.name.toLowerCase().includes('weapon');
-                          
-                          let imageSrc;
-                          if (isCommander) {
-                            imageSrc = ring.image || '/image/logo.png';
-                          } else if (isActualRing) {
-                            imageSrc = getRingImage(ring.type);
-                          } else {
-                            imageSrc = ring.image || '/image/logo.png';
+                          if (target.src !== '/image/logo.png') {
+                            target.src = '/image/logo.png';
                           }
-                            
-                          console.error('아이템 이미지 로드 실패:', {
-                            originalSrc: imageSrc,
-                            itemName: ring.name,
-                            itemType: ring.type,
-                            isActualRing: isActualRing,
-                            isCommander: isCommander,
-                            fallbackSrc: '/image/logo.png'
-                          });
-                          target.src = '/image/logo.png';
                         }}
                       />
                       <div className="text-left">
@@ -412,10 +355,7 @@ export default function DesireDropModal({
               </div>
               <button
                 onClick={() => setStep('price')}
-                className="w-full mt-4 py-2 text-white rounded-lg transition-colors"
-                style={{ backgroundColor: '#FF9100' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#E68200'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FF9100'}
+                className="w-full mt-4 py-2 text-white rounded-lg transition-colors bg-[#FF9100] hover:bg-[#E68200]"
               >
                 다음
               </button>
@@ -468,16 +408,7 @@ export default function DesireDropModal({
                     value={formatPrice(price)}
                     onChange={(e) => handlePriceChange(e.target.value)}
                     placeholder="예: 50000 (5억 메소)"
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2"
-
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = '#FF9100';
-                      e.currentTarget.style.boxShadow = '0 0 0 2px rgba(255, 145, 0, 0.2)';
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = '#D1D5DB';
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:border-[#FF9100] focus:ring-2 focus:ring-[rgba(255,145,0,0.2)]"
                   />
                   {price && (
                     <p className="text-sm text-gray-600 mt-1">
@@ -488,14 +419,7 @@ export default function DesireDropModal({
                 <button
                   onClick={handleAddItem}
                   disabled={!price || parseInt(price.replace(/[^0-9]/g, '')) <= 0}
-                  className="w-full py-3 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                  style={!price ? {} : { backgroundColor: '#FF9100' }}
-                  onMouseEnter={(e) => {
-                    if (price) e.currentTarget.style.backgroundColor = '#E68200';
-                  }}
-                  onMouseLeave={(e) => {
-                    if (price) e.currentTarget.style.backgroundColor = '#FF9100';
-                  }}
+                  className="w-full py-3 text-white rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors bg-[#FF9100] hover:bg-[#E68200]"
                 >
                   물욕템 추가
                 </button>
@@ -516,14 +440,7 @@ export default function DesireDropModal({
             <button
               onClick={handleSave}
               disabled={desireDropItems.length === 0}
-              className="px-6 py-2 text-white rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-              style={desireDropItems.length === 0 ? {} : { backgroundColor: '#FF9100' }}
-              onMouseEnter={(e) => {
-                if (desireDropItems.length > 0) e.currentTarget.style.backgroundColor = '#E68200';
-              }}
-              onMouseLeave={(e) => {
-                if (desireDropItems.length > 0) e.currentTarget.style.backgroundColor = '#FF9100';
-              }}
+              className="px-6 py-2 text-white rounded-lg transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed bg-[#FF9100] hover:bg-[#E68200]"
             >
               저장
             </button>
