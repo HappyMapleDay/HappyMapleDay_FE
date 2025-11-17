@@ -4,26 +4,43 @@ import {
   SettlementRequest, 
   SettlementCompleteResponse 
 } from '../types/settlement';
+import { TokenManager } from './authService';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+// 인증 헤더 생성 헬퍼 함수
+const getAuthHeaders = (): Record<string, string> => {
+  const token = TokenManager.getAccessToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
 
 // 특정 주차 정산 데이터 조회 (요약본)
 export const getSettlementStatus = async (
   userId: number, 
   weekStartDate: string
-): Promise<SettlementStatusResponse> => {
+): Promise<SettlementStatusResponse | null> => {
   try {
     const response = await fetch(
       `${API_BASE_URL}/api/settlement/user/${userId}/week/${weekStartDate}`,
       {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       }
     );
 
     if (!response.ok) {
+      if (response.status === 404) {
+        console.log('정산 데이터 없음 (아직 생성되지 않음)');
+        return null;
+      }
       throw new Error(`정산 요약 데이터 조회 실패: ${response.status}`);
     }
 
@@ -45,9 +62,7 @@ export const getSettlementDetail = async (
       `${API_BASE_URL}/api/settlement/user/${userId}/week/${weekStartDate}/detail`,
       {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       }
     );
 
@@ -84,9 +99,7 @@ export const attemptSettlement = async (
       `${API_BASE_URL}/api/settlement/user/${userId}/week/${weekStartDate}`,
       {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
         body: JSON.stringify(settlementRequest),
       }
     );
@@ -108,16 +121,14 @@ export const autoSaveSettlement = async (
   userId: number,
   weekStartDate: string,
   settlementRequest: SettlementRequest
-): Promise<SettlementCompleteResponse> => {
+): Promise<SettlementCompleteResponse | null> => {
   try {
     const url = `${API_BASE_URL}/api/settlement/user/${userId}/week/${weekStartDate}/auto-save`;
     console.log('자동 저장 요청:', { url, settlementRequest });
     
     const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: getAuthHeaders(),
       body: JSON.stringify(settlementRequest),
     });
 
@@ -125,15 +136,16 @@ export const autoSaveSettlement = async (
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('자동 저장 에러 응답:', errorText);
-      throw new Error(`정산 데이터 임시 저장 실패: ${response.status}`);
+      console.warn('자동 저장 실패:', { status: response.status, errorText });
+      return null;
     }
 
     const data = await response.json();
+    console.log('자동 저장 성공');
     return data;
   } catch (error) {
-    console.error('정산 데이터 임시 저장 중 오류:', error);
-    throw error;
+    console.warn('정산 데이터 임시 저장 중 오류 (무시됨):', error);
+    return null;
   }
 };
 
@@ -147,9 +159,7 @@ export const deleteSettlement = async (
       `${API_BASE_URL}/api/settlement/user/${userId}/settlement/${settlementId}`,
       {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getAuthHeaders(),
       }
     );
 
