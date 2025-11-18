@@ -78,6 +78,35 @@ export const getSettlementDetail = async (
   }
 };
 
+// 날짜를 해당 주의 목요일로 정규화 (메이플 주차 시작일)
+export const normalizeToThursday = (dateString: string): string => {
+  // YYYY.MM.DD 또는 YYYY-MM-DD 형식 모두 처리
+  const normalizedDate = dateString.replace(/\./g, '-');
+  const date = new Date(normalizedDate);
+  
+  const dayOfWeek = date.getDay(); // 0: 일요일, 1: 월요일, ..., 4: 목요일
+  
+  // 목요일(4)을 기준으로 조정
+  let daysToThursday;
+  if (dayOfWeek >= 4) {
+    // 목요일 이후(목~토): 이번 주 목요일
+    daysToThursday = dayOfWeek - 4;
+  } else {
+    // 목요일 이전(일~수): 지난 주 목요일
+    daysToThursday = dayOfWeek + 3;
+  }
+  
+  const thursday = new Date(date);
+  thursday.setDate(date.getDate() - daysToThursday);
+  
+  // YYYY-MM-DD 형식으로 반환
+  const year = thursday.getFullYear();
+  const month = String(thursday.getMonth() + 1).padStart(2, '0');
+  const day = String(thursday.getDate()).padStart(2, '0');
+  
+  return `${year}-${month}-${day}`;
+};
+
 // 날짜 형식 변환 (YYYY.MM.DD -> YYYY-MM-DD)
 export const formatDateForAPI = (dateString: string): string => {
   return dateString.replace(/\./g, '-');

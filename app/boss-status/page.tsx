@@ -16,7 +16,7 @@ import { getCharacterList } from "../../services/characterService";
 import nexonApiService from "../../services/nexonApiService";
 import { TokenManager } from "../../services/authService";
 import { getBossListFromAPI, getBossDesireItems, getOptimizedRecommendation } from "../../services/bossService";
-import { getSettlementStatus, formatDateForAPI, attemptSettlement, autoSaveSettlement, deleteSettlement } from "../../services/settlementService";
+import { getSettlementStatus, normalizeToThursday, attemptSettlement, autoSaveSettlement, deleteSettlement } from "../../services/settlementService";
 import type { BossResponse, Boss, OptimizeRecommendationRequest, OptimizedRecommendationResponse } from "../../types/boss";
 import type { SettlementStatusResponse, SettlementRequest, BossRecordRequest, DesireItemRequest } from "../../types/settlement";
 // 프리셋 로직은 모달 내부에서 처리
@@ -426,7 +426,8 @@ export default function BossStatusPage() {
     
     try {
       setIsLoadingSettlement(true);
-      const weekStartDate = formatDateForAPI(dateRange.startDate);
+      // 날짜를 목요일(주차 시작일)로 정규화
+      const weekStartDate = normalizeToThursday(dateRange.startDate);
       
       // localStorage에서 userId 가져오기
       const userIdStr = TokenManager.getUserId();
@@ -675,7 +676,8 @@ export default function BossStatusPage() {
     
     try {
       setIsAutoSaving(true);
-      const weekStartDate = formatDateForAPI(dateRange.startDate);
+      // 날짜를 목요일(주차 시작일)로 정규화
+      const weekStartDate = normalizeToThursday(dateRange.startDate);
       
       // localStorage에서 userId 가져오기
       const userIdStr = TokenManager.getUserId();
@@ -706,10 +708,10 @@ export default function BossStatusPage() {
       clearTimeout(autoSaveTimeoutRef.current);
     }
     
-    // 5초 후 자동 저장 실행
+    // 5분 후 자동 저장 실행
     autoSaveTimeoutRef.current = setTimeout(() => {
       triggerAutoSave();
-    }, 5000);
+    }, 300000);
   }, [triggerAutoSave]);
 
   // 보스 선택 변경 시 자동 저장 스케줄링
@@ -730,7 +732,8 @@ export default function BossStatusPage() {
     if (!isLoggedIn || !mainCharacterName) return;
     
     try {
-      const weekStartDate = formatDateForAPI(dateRange.startDate);
+      // 날짜를 목요일(주차 시작일)로 정규화
+      const weekStartDate = normalizeToThursday(dateRange.startDate);
       
       // localStorage에서 userId 가져오기
       const userIdStr = TokenManager.getUserId();
@@ -802,17 +805,9 @@ export default function BossStatusPage() {
       
       console.log('정산 시도:', { userId, weekStartDate, settlementRequest });
       
-      // 1. 먼저 auto-save로 데이터 생성 또는 업데이트
-      try {
-        await autoSaveSettlement(userId, weekStartDate, settlementRequest);
-        console.log('임시 저장 완료');
-      } catch (autoSaveError) {
-        console.warn('임시 저장 실패 (이미 존재할 수 있음):', autoSaveError);
-      }
-      
-      // 2. PUT으로 정산 완료 처리
+      // PUT으로 정산 완료 처리 (데이터 생성 및 완료 상태로 저장)
       const result = await attemptSettlement(userId, weekStartDate, settlementRequest);
-      console.log('정산 시도 완료:', result);
+      console.log('정산 완료:', result);
       
       // 정산 완료 후 데이터 새로고침
       await loadSettlementData();
